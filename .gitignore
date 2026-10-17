@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Environment
+.env
+.env.local
+*.env
+!.env.example
+
+# Build output
+client/dist/
+client/.vite/
+
+# Local file storage fallback (when Cloudinary is not configured)
+server/uploads/
+server/generated/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
