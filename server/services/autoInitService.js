@@ -280,6 +280,7 @@ async function ensureSchemaAndSeed() {
                     title = 'Department Clearance Officer', is_active = TRUE 
               WHERE id = ?`,
             [fullName, item.faculty, dept, existing.id]
+          );
         }
 
         // Common shorthand alias for Computer Science
