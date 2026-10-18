@@ -33,8 +33,20 @@ const HALL_EMAIL_SLUGS = {
   'Obafemi Awolowo Hall': 'obafemi-awolowo',
 };
 
-async function ensureSchemaAndSeed() {
+async function ensureSchemaAndSeed(force = false) {
   try {
+    // Fast path: if schema and officers are already seeded, skip heavy startup processing
+    if (!force) {
+      try {
+        const officerCount = await queryOne("SELECT COUNT(*) AS cnt FROM users WHERE role = 'officer'");
+        if (officerCount && officerCount.cnt >= 50) {
+          return { success: true, message: 'All tables and accounts already initialized.' };
+        }
+      } catch (_) {
+        // Table doesn't exist yet, proceed with full initialization below
+      }
+    }
+
     // 1. Check if users table already exists
     let usersTableExists = false;
     try {

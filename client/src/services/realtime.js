@@ -24,7 +24,8 @@ class RealtimeClient {
     this.token = token;
 
     try {
-      const url = `/api/realtime/stream?token=${encodeURIComponent(token)}`;
+      const apiBase = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
+      const url = `${apiBase}/realtime/stream?token=${encodeURIComponent(token)}`;
       this.source = new EventSource(url);
 
       const eventNames = [
@@ -52,8 +53,17 @@ class RealtimeClient {
         });
       }
 
+      let errorCount = 0;
+      this.source.onopen = () => {
+        errorCount = 0;
+      };
+
       this.source.onerror = () => {
-        // EventSource will automatically attempt reconnection.
+        errorCount += 1;
+        if (errorCount > 3) {
+          // Prevent endless retry spam when server is sleeping or behind proxy
+          this.disconnect();
+        }
       };
     } catch (err) {
       console.warn('[realtime] failed to initialize SSE:', err);

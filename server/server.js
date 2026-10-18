@@ -76,7 +76,8 @@ app.get('/api/system/academic-structure', (req, res) => {
   res.json({ success: true, data: { faculties: ACADEMIC_STRUCTURE } });
 });
 app.get('/api/system/init-db', async (req, res) => {
-  const result = await ensureSchemaAndSeed();
+  const force = req.query.force === 'true';
+  const result = await ensureSchemaAndSeed(force);
   res.json(result);
 });
 

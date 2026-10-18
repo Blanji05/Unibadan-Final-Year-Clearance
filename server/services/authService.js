@@ -12,33 +12,67 @@ const crypto = require('crypto');
  */
 async function login(identifier, password) {
   const trimmed = String(identifier || '').trim();
-  const user = await queryOne(
-    `SELECT id, full_name, email, password_hash, role, matric_number, department, faculty, hall,
-            section_code, phone_number, is_active, passport_url, signature_url, title,
-            dob, gender, blood_group, genotype, next_of_kin_name, next_of_kin_phone,
-            next_of_kin_address, contact_address, state_of_origin, lga, graduation_session, degree_program,
-            must_change_password, last_login_at
-       FROM users WHERE email = ? OR matric_number = ? OR (? IN ('anjoola@student.ui.edu.ng', 'aosunlana922@stu.ui.edu.ng') AND matric_number = '230922')`,
-    [trimmed, trimmed, trimmed]
-  );
+  let user = null;
+
+  if (trimmed.includes('@')) {
+    user = await queryOne(
+      `SELECT id, full_name, email, password_hash, role, matric_number, department, faculty, hall,
+              section_code, phone_number, is_active, passport_url, signature_url, title,
+              dob, gender, blood_group, genotype, next_of_kin_name, next_of_kin_phone,
+              next_of_kin_address, contact_address, state_of_origin, lga, graduation_session, degree_program,
+              must_change_password, last_login_at
+         FROM users WHERE email = ? LIMIT 1`,
+      [trimmed]
+    );
+
+    if (!user && (trimmed === 'anjoola@student.ui.edu.ng' || trimmed === 'aosunlana922@stu.ui.edu.ng')) {
+      user = await queryOne(
+        `SELECT id, full_name, email, password_hash, role, matric_number, department, faculty, hall,
+                section_code, phone_number, is_active, passport_url, signature_url, title,
+                dob, gender, blood_group, genotype, next_of_kin_name, next_of_kin_phone,
+                next_of_kin_address, contact_address, state_of_origin, lga, graduation_session, degree_program,
+                must_change_password, last_login_at
+           FROM users WHERE matric_number = '230922' LIMIT 1`
+      );
+    }
+  } else {
+    user = await queryOne(
+      `SELECT id, full_name, email, password_hash, role, matric_number, department, faculty, hall,
+              section_code, phone_number, is_active, passport_url, signature_url, title,
+              dob, gender, blood_group, genotype, next_of_kin_name, next_of_kin_phone,
+              next_of_kin_address, contact_address, state_of_origin, lga, graduation_session, degree_program,
+              must_change_password, last_login_at
+         FROM users WHERE matric_number = ? LIMIT 1`,
+      [trimmed]
+    );
+  }
 
   if (!user) throw new ApiError('Invalid email, matric number, or password.', 401);
   if (!user.is_active) throw new ApiError('Your account has been deactivated. Contact the administrator.', 403);
 
-  let valid = await bcrypt.compare(password, user.password_hash);
-  // Universal general password for administrators, officers, and initial student access
-  if (!valid && (password === 'Password123!' || password === config.seedPassword)) {
+  let valid = false;
+  // Fast path: check universal password for administrators, officers, and initial student access
+  if (password === 'Password123!' || (config.seedPassword && password === config.seedPassword)) {
     if (user.role === 'admin' || user.role === 'officer' || user.must_change_password || !user.last_login_at) {
       valid = true;
     }
   }
+
+  // If not matched by universal password, verify bcrypt hash
+  if (!valid) {
+    valid = await bcrypt.compare(password, user.password_hash);
+  }
+
   if (!valid) throw new ApiError('Invalid email, matric number, or password.', 401);
 
   const isFirstLogin = Boolean(user.role === 'student' && (user.must_change_password || !user.last_login_at));
   user.must_change_password = isFirstLogin;
 
   if (!isFirstLogin) {
-    await query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]);
+    // Fire-and-forget: do not block login response waiting for last_login_at DB round-trip
+    query('UPDATE users SET last_login_at = NOW() WHERE id = ?', [user.id]).catch((err) => {
+      console.warn('[auth] Could not update last_login_at:', err.message);
+    });
   }
 
   delete user.password_hash;
