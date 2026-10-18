@@ -3332,5 +3332,777 @@ html, body, #root, .app-layout {
   }
 }
 
+/* ==========================================================================
+   Homepage & Landing Page Styles
+   ========================================================================== */
+.home-container {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: #fbf9f4;
+  color: #1e293b;
+  overflow-x: hidden;
+  font-family: inherit;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 1. Navbar */
+.home-navbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid #e7ded0;
+  width: 100%;
+}
+
+.home-nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  flex-shrink: 0;
+}
+
+.home-brand-logo {
+  width: 38px;
+  height: 38px;
+  background: #92400e;
+  color: #ffffff;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.95rem;
+  box-shadow: 0 2px 6px rgba(146, 64, 14, 0.25);
+}
+
+.home-brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.home-brand-text strong {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #1e293b;
+  line-height: 1.25;
+}
+
+.home-brand-text span {
+  font-size: 0.75rem;
+  color: #78350f;
+  font-weight: 600;
+}
+
+.home-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.home-nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #475569;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.home-nav-link:hover {
+  color: #92400e;
+}
+
+.home-nav-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.home-btn-signin {
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 0.55rem 1.15rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 7px;
+}
+
+.home-nav-toggle {
+  display: none;
+  background: #f1ede2;
+  border: 1px solid #e2dac7;
+  border-radius: 6px;
+  padding: 0.45rem;
+  cursor: pointer;
+  color: #475569;
+}
+
+.home-mobile-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem 1.5rem;
+  background: #ffffff;
+  border-top: 1px solid #e7ded0;
+  gap: 0.85rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.home-mobile-nav a {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: #1e293b;
+  text-decoration: none;
+  padding: 0.35rem 0;
+}
+
+.home-mobile-nav-footer {
+  margin-top: 0.5rem;
+  padding-top: 0.85rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.home-mobile-nav-footer .btn {
+  width: 100%;
+  justify-content: center;
+}
+
+/* 2. Hero Section */
+.home-hero {
+  padding: 4.5rem 1.5rem 3.5rem;
+  background: radial-gradient(circle at 50% 10%, #fdf8ef 0%, #f7f0e0 100%);
+  border-bottom: 1px solid #ede1cb;
+  display: flex;
+  justify-content: center;
+}
+
+.home-hero-content {
+  max-width: 860px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home-hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid #e2dac7;
+  padding: 0.35rem 0.95rem;
+  border-radius: 20px;
+  font-size: 0.825rem;
+  font-weight: 600;
+  color: #78350f;
+  margin-bottom: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.home-badge-dot {
+  width: 8px;
+  height: 8px;
+  background: #16a34a;
+  border-radius: 50%;
+  display: inline-block;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.home-hero-title {
+  font-size: clamp(1.85rem, 1.4rem + 2.25vw, 3.15rem);
+  font-weight: 800;
+  color: #1e1b18;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin-bottom: 1.25rem;
+}
+
+.home-hero-subtitle {
+  font-size: clamp(0.95rem, 0.9rem + 0.3vw, 1.15rem);
+  color: #4b443c;
+  line-height: 1.65;
+  margin-bottom: 2rem;
+  max-width: 720px;
+}
+
+.home-hero-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 3rem;
+  width: 100%;
+}
+
+.home-btn-hero {
+  font-size: 1rem;
+  padding: 0.8rem 1.6rem;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(146, 64, 14, 0.25);
+}
+
+.home-btn-hero-outline {
+  font-size: 1rem;
+  padding: 0.8rem 1.5rem;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #451a03;
+  border: 1px solid #d4c8b2;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.home-metrics-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  padding: 1.15rem 1.75rem;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04);
+  width: 100%;
+  max-width: 820px;
+}
+
+.home-metric-item {
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  flex: 1;
+}
+
+.home-metric-item strong {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #92400e;
+}
+
+.home-metric-item span {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.home-metric-divider {
+  width: 1px;
+  height: 36px;
+  background: #ede1cb;
+}
+
+/* 3. Common Section Headers */
+.home-section {
+  padding: 4.5rem 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.home-section-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 3rem;
+}
+
+.home-section-eyebrow {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #92400e;
+  margin-bottom: 0.4rem;
+}
+
+.home-section-title {
+  font-size: clamp(1.45rem, 1.25rem + 1vw, 2.15rem);
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.25;
+  margin-bottom: 0.85rem;
+}
+
+.home-section-desc {
+  font-size: 0.95rem;
+  color: #64748b;
+  line-height: 1.6;
+}
+
+/* 4. About Cards */
+.home-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1.5rem;
+}
+
+.home-feature-card {
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  border-radius: 12px;
+  padding: 2rem 1.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.home-feature-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(146, 64, 14, 0.08);
+  border-color: #cbbf9f;
+}
+
+.home-feature-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.25rem;
+}
+
+.home-feature-card h3 {
+  font-size: 1.18rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.65rem;
+}
+
+.home-feature-card p {
+  font-size: 0.9rem;
+  color: #475569;
+  line-height: 1.6;
+}
+
+/* 5. Clearance Stages Grid */
+.home-stages-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: 1.15rem;
+  margin-bottom: 2rem;
+}
+
+.home-stage-card {
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  border-radius: 10px;
+  padding: 1.35rem 1.25rem;
+  display: flex;
+  flex-direction: column;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.home-stage-card:hover {
+  border-color: #92400e;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
+}
+
+.home-stage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.home-stage-num {
+  width: 28px;
+  height: 28px;
+  background: #fef3c7;
+  color: #92400e;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.home-stage-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  background: #f1f5f9;
+  color: #475569;
+  border-radius: 12px;
+}
+
+.home-stage-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.35rem;
+  line-height: 1.35;
+}
+
+.home-stage-loc {
+  font-size: 0.78rem;
+  color: #78350f;
+  font-weight: 600;
+  margin-bottom: 0.55rem;
+}
+
+.home-stage-desc {
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 0.85rem;
+  flex: 1;
+}
+
+.home-stage-foot {
+  padding-top: 0.65rem;
+  border-top: 1px dashed #e2e8f0;
+  font-size: 0.75rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.home-stages-banner {
+  background: #fef7ee;
+  border: 1px solid #fbd38d;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.home-stages-banner-left h4 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #78350f;
+  margin-bottom: 0.25rem;
+}
+
+.home-stages-banner-left p {
+  font-size: 0.88rem;
+  color: #78350f;
+  margin: 0;
+  line-height: 1.5;
+}
+
+/* 6. How It Works Steps */
+.home-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1.5rem;
+}
+
+.home-step-item {
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  border-radius: 10px;
+  padding: 1.75rem 1.35rem;
+  position: relative;
+}
+
+.home-step-number {
+  font-size: 2rem;
+  font-weight: 900;
+  color: #e6decb;
+  line-height: 1;
+  margin-bottom: 0.75rem;
+}
+
+.home-step-item h4 {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-bottom: 0.45rem;
+}
+
+.home-step-item p {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* 7. Requirements Checklist */
+.home-reqs-checklist {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 1rem;
+}
+
+.home-req-item {
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+}
+
+.home-req-check {
+  color: #16a34a;
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
+.home-req-item strong {
+  display: block;
+  font-size: 0.88rem;
+  color: #1e293b;
+  margin-bottom: 0.2rem;
+}
+
+.home-req-item span {
+  font-size: 0.78rem;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* 8. FAQ Accordion */
+.home-faq-accordion {
+  max-width: 780px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.home-faq-card {
+  background: #ffffff;
+  border: 1px solid #e7ded0;
+  border-radius: 8px;
+  padding: 1.15rem 1.25rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.home-faq-card:hover {
+  border-color: #92400e;
+}
+
+.home-faq-card.active {
+  border-color: #92400e;
+  box-shadow: 0 2px 6px rgba(146, 64, 14, 0.06);
+}
+
+.home-faq-question {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.home-faq-question h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.home-faq-toggle-icon {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #92400e;
+  line-height: 1;
+}
+
+.home-faq-answer {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #f1f5f9;
+}
+
+.home-faq-answer p {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* 9. CTA Section */
+.home-cta-section {
+  padding: 2rem 1.5rem 4.5rem;
+  max-width: 1000px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.home-cta-box {
+  background: linear-gradient(135deg, #78350f 0%, #451a03 100%);
+  color: #ffffff;
+  border-radius: 16px;
+  padding: 3rem 2rem;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(69, 26, 3, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.home-cta-box h2 {
+  font-size: clamp(1.4rem, 1.2rem + 1vw, 2.1rem);
+  font-weight: 800;
+  margin-bottom: 0.85rem;
+}
+
+.home-cta-box p {
+  font-size: 1rem;
+  color: #fde68a;
+  max-width: 620px;
+  margin-bottom: 1.75rem;
+  line-height: 1.6;
+}
+
+.home-cta-buttons {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+/* 10. Footer */
+.home-footer {
+  background: #231e18;
+  color: #d1c7b8;
+  padding: 4rem 1.5rem 1.5rem;
+  border-top: 1px solid #3c342a;
+}
+
+.home-footer-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1.5fr;
+  gap: 2.5rem;
+  margin-bottom: 3rem;
+}
+
+.home-footer-col h5 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #ffffff;
+  margin-bottom: 1rem;
+}
+
+.home-footer-tagline {
+  font-size: 0.85rem;
+  color: #a89d8d;
+  line-height: 1.6;
+  margin-top: 0.85rem;
+  max-width: 320px;
+}
+
+.home-footer-links {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.home-footer-links a {
+  color: #d1c7b8;
+  text-decoration: none;
+  font-size: 0.85rem;
+  transition: color 0.15s ease;
+}
+
+.home-footer-links a:hover {
+  color: #fbbf24;
+}
+
+.home-footer-contact {
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: #a89d8d;
+}
+
+.home-footer-bottom {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 1.5rem;
+  border-top: 1px solid #383025;
+  text-align: center;
+  font-size: 0.8rem;
+  color: #796e65;
+}
+
+/* Responsive Breakpoints for Landing Page */
+@media (max-width: 900px) {
+  .home-footer-inner {
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  .home-nav-links {
+    display: none;
+  }
+
+  .home-nav-toggle {
+    display: flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .home-footer-inner {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .home-metrics-bar {
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .home-metric-divider {
+    width: 100%;
+    height: 1px;
+  }
+
+  .home-hero {
+    padding: 3rem 1rem 2.5rem;
+  }
+
+  .home-section {
+    padding: 3rem 1rem;
+  }
+
+  .home-cta-box {
+    padding: 2rem 1.25rem;
+  }
+}
+
+
 
 

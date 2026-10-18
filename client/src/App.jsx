@@ -25,6 +25,8 @@ import ManageStudents from './pages/admin/ManageStudents.jsx';
 import ManageUsers from './pages/admin/ManageUsers.jsx';
 import Reports from './pages/admin/Reports.jsx';
 
+import Home from './pages/Home.jsx';
+
 /** Route guard: requires a session, and optionally a specific role. */
 function Protected({ roles, children }) {
   const { user, loading } = useAuth();
@@ -34,6 +36,22 @@ function Protected({ roles, children }) {
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
 
   return children;
+}
+
+/** Root route: displays Home for visitors, or redirects logged-in users to their role dashboard. */
+function HomeRoute() {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div className="page-loading">Loading…</div>;
+  if (!user) return <Home />;
+
+  const home = {
+    student: '/student',
+    officer: '/officer',
+    admin: '/admin',
+  }[user.role];
+
+  return <Navigate to={home || '/student'} replace />;
 }
 
 /** Sends each role to its own landing page. */
@@ -55,12 +73,14 @@ function RoleHome() {
 export default function App() {
   return (
     <Routes>
+      <Route path="/" element={<HomeRoute />} />
+      <Route path="/home" element={<Home />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route element={<Layout />}>
-        <Route path="/" element={<RoleHome />} />
+        <Route path="/dashboard" element={<RoleHome />} />
 
         <Route
           path="/student"
