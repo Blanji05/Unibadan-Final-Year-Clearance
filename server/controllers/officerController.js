@@ -220,11 +220,11 @@ async function applyReview(officerId, studentId, stageId, decision, remarks, off
   const stage = await queryOne('SELECT stage_name FROM clearance_stages WHERE id = ?', [stageId]);
 
   if (student && stage) {
-    const title = `${stage.stage_name} ${decision}`;
-    const message =
-      decision === 'approved'
-        ? `Your ${stage.stage_name} has been approved. You may proceed to the next stage.`
-        : `Your ${stage.stage_name} was rejected. Reason: ${remarks}`;
+    const isApproved = decision === 'approved';
+    const title = `${stage.stage_name} ${isApproved ? 'Approved' : 'Rejected'}`;
+    const message = isApproved
+      ? `Congratulations! Your ${stage.stage_name} has been approved by the clearance officer. You have satisfied all requirements for this section and may now proceed with the remaining stages of your final year clearance.`
+      : `Your submission for ${stage.stage_name} was reviewed and rejected by the clearance officer.\n\nReason / Feedback:\n"${remarks}"\n\nPlease log in to your student portal, review the officer's remarks, re-upload the corrected documents or form details, and resubmit for approval.`;
 
     await notifyUser({
       userId: student.id,
@@ -233,7 +233,13 @@ async function applyReview(officerId, studentId, stageId, decision, remarks, off
       title,
       message,
       stageId,
-      subject: `UI Clearance: ${title}`,
+      subject: isApproved
+        ? `UI Clearance Approved: ${stage.stage_name}`
+        : `Action Required: ${stage.stage_name} Submission Rejected`,
+      actionUrl: isApproved
+        ? 'https://unibadan-final-year-clearance.vercel.app/student'
+        : `https://unibadan-final-year-clearance.vercel.app/student/stages/${stageId}`,
+      actionText: isApproved ? 'View Clearance Status' : 'Fix & Resubmit Now',
     });
   }
 

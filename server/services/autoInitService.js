@@ -117,6 +117,25 @@ async function ensureSchemaAndSeed() {
       } catch (_) {}
     }
 
+    // 4b. Ensure required columns exist on `payments` table
+    const paymentColumns = [
+      { name: 'gateway', type: "VARCHAR(30) NOT NULL DEFAULT 'paystack'" },
+      { name: 'authorization_url', type: 'VARCHAR(500) DEFAULT NULL' },
+      { name: 'rrr', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'paid_at', type: 'TIMESTAMP NULL DEFAULT NULL' },
+    ];
+    for (const col of paymentColumns) {
+      try {
+        const exists = await query(
+          `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = ?`,
+          [col.name]
+        );
+        if (!exists.length) {
+          await query(`ALTER TABLE payments ADD COLUMN ${col.name} ${col.type}`);
+        }
+      } catch (_) {}
+    }
+
     // 5. Ensure auxiliary tables exist
     await query(`
       CREATE TABLE IF NOT EXISTS settings (

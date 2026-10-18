@@ -116,9 +116,11 @@ const sendReminders = asyncHandler(async (req, res) => {
       userId: student.id,
       phone: student.phone_number,
       email: student.email,
-      title: 'Clearance reminder',
-      message,
-      subject: 'UI Clearance: a reminder about your clearance',
+      title: 'Clearance Deadline Reminder',
+      message: `Dear ${student.full_name},\n\nYou have outstanding clearance items requiring your attention:\n\n${summary}\n\nPlease log in to your portal to complete your pending clearance stages as soon as possible before the university deadline.`,
+      subject: 'Important Reminder: Outstanding University of Ibadan Clearance',
+      actionUrl: 'https://unibadan-final-year-clearance.vercel.app/student',
+      actionText: 'Complete Your Clearance Now',
     });
     notified += 1;
   }

@@ -34,6 +34,86 @@ async function recordNotification(userId, channel, deliveryStatus, title, messag
   }
 }
 
+function buildEmailTemplate({ title, message, actionUrl, actionText }) {
+  const portalUrl = actionUrl || 'https://unibadan-final-year-clearance.vercel.app';
+  const btnText = actionText || 'Open Clearance Portal';
+
+  const lowerTitle = (title || '').toLowerCase();
+  let badgeColor = '#15803d'; // Green
+  let badgeBg = '#dcfce7';
+  let badgeLabel = 'CLEARANCE NOTIFICATION';
+
+  if (lowerTitle.includes('reject') || lowerTitle.includes('failed')) {
+    badgeColor = '#b91c1c'; // Red
+    badgeBg = '#fee2e2';
+    badgeLabel = 'ACTION REQUIRED';
+  } else if (lowerTitle.includes('remind') || lowerTitle.includes('deadline')) {
+    badgeColor = '#b45309'; // Amber
+    badgeBg = '#fef3c7';
+    badgeLabel = 'CLEARANCE REMINDER';
+  } else if (lowerTitle.includes('approv') || lowerTitle.includes('ready') || lowerTitle.includes('success')) {
+    badgeColor = '#15803d'; // Green
+    badgeBg = '#dcfce7';
+    badgeLabel = 'STAGE APPROVED';
+  } else if (lowerTitle.includes('welcome') || lowerTitle.includes('password') || lowerTitle.includes('account')) {
+    badgeColor = '#0369a1'; // Blue
+    badgeBg = '#e0f2fe';
+    badgeLabel = 'ACCOUNT UPDATE';
+  }
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background-color: #f8fafc;">
+      <div style="background-color: #ffffff; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+        
+        <!-- Header -->
+        <div style="background-color: #0f172a; padding: 24px; text-align: center; border-bottom: 3px solid #15803d;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.5px;">University of Ibadan</h1>
+          <p style="color: #94a3b8; margin: 6px 0 0 0; font-size: 13px;">Online Final Year Clearance System</p>
+        </div>
+
+        <!-- Content Area -->
+        <div style="padding: 32px 24px;">
+          
+          <div style="margin-bottom: 20px;">
+            <span style="background-color: ${badgeBg}; color: ${badgeColor}; padding: 4px 10px; border-radius: 9999px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block;">
+              ${badgeLabel}
+            </span>
+          </div>
+
+          <h2 style="color: #1e293b; font-size: 18px; margin: 0 0 16px 0; font-weight: 600;">
+            ${title}
+          </h2>
+
+          <div style="background-color: #f8fafc; border-left: 4px solid ${badgeColor}; padding: 16px; border-radius: 0 8px 8px 0; margin-bottom: 28px;">
+            <p style="color: #334155; font-size: 15px; line-height: 1.6; margin: 0; white-space: pre-line;">
+              ${message}
+            </p>
+          </div>
+
+          <div style="text-align: center; margin: 32px 0 20px 0;">
+            <a href="${portalUrl}" target="_blank" style="background-color: #15803d; color: #ffffff; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 14px; display: inline-block; box-shadow: 0 2px 4px rgba(21, 128, 61, 0.2);">
+              ${btnText}
+            </a>
+          </div>
+
+          <p style="font-size: 12px; color: #64748b; text-align: center; margin: 0;">
+            Direct portal link: <a href="${portalUrl}" style="color: #0284c7; text-decoration: underline;">${portalUrl}</a>
+          </p>
+        </div>
+
+        <!-- Footer -->
+        <div style="background-color: #f1f5f9; padding: 16px 24px; text-align: center; border-top: 1px solid #e2e8f0;">
+          <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+            This is an automated notification from the University of Ibadan Clearance Portal.<br>
+            Please do not reply directly to this email.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
 /**
  * Notify a user on every channel they have an address for.
  *
@@ -41,7 +121,18 @@ async function recordNotification(userId, channel, deliveryStatus, title, messag
  * and email go out as best-effort enhancements. `subject` gives the email a
  * proper subject line; the inbox keeps the short `title`.
  */
-async function notifyUser({ userId, phone, email, title, message, stageId = null, subject = null }) {
+async function notifyUser({
+  userId,
+  phone,
+  email,
+  title,
+  message,
+  stageId = null,
+  subject = null,
+  html = null,
+  actionUrl = null,
+  actionText = null,
+}) {
   await recordNotification(userId, 'in_app', 'sent', title, message, stageId);
 
   try {
@@ -81,7 +172,8 @@ async function notifyUser({ userId, phone, email, title, message, stageId = null
   }
 
   if (email) {
-    const outcome = await sendEmail({ to: email, subject: subject || title, text: message });
+    const emailHtml = html || buildEmailTemplate({ title, message, actionUrl, actionText });
+    const outcome = await sendEmail({ to: email, subject: subject || title, text: message, html: emailHtml });
     await recordNotification(userId, 'email', outcome.status, title, message, stageId);
   }
 }

@@ -409,6 +409,22 @@ async function submitStage(studentId, stageId, documentIds = [], remarks = null)
     });
   }
 
+  // Notify student that their submission has been officially received
+  const studentUser = await queryOne('SELECT id, full_name, email, phone_number FROM users WHERE id = ?', [studentId]);
+  if (studentUser && studentUser.email) {
+    await notifyUser({
+      userId: studentId,
+      phone: studentUser.phone_number,
+      email: studentUser.email,
+      title: `Submission Received: ${displayStageName}`,
+      message: `Hello ${studentUser.full_name},\n\nYour clearance submission for ${displayStageName} has been successfully received and placed in the clearance officer review queue.\n\nYou will be notified via email immediately once the officer reviews and updates your clearance status.`,
+      stageId,
+      subject: `UI Clearance Submission Confirmed: ${displayStageName}`,
+      actionUrl: 'https://unibadan-final-year-clearance.vercel.app/student',
+      actionText: 'Track Clearance Status',
+    });
+  }
+
   try {
     const { emitToRole, emitToUser } = require('./realtimeService');
     for (const officer of officers) {

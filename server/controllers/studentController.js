@@ -93,7 +93,8 @@ const submitStage = asyncHandler(async (req, res) => {
 
 /** POST /api/student/pay/:stageId */
 const initiatePayment = asyncHandler(async (req, res) => {
-  const result = await paymentService.initiatePayment(req.user.id, Number(req.params.stageId));
+  const origin = req.headers.origin || req.headers.referer || null;
+  const result = await paymentService.initiatePayment(req.user.id, Number(req.params.stageId), origin);
   return sendSuccess(res, result, 201);
 });
 

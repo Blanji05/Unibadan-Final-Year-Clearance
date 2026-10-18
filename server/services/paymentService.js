@@ -36,19 +36,23 @@ async function notifyPayment(studentId, stageId, outcome, reference) {
     userId: student.id,
     phone: student.phone_number,
     email: student.email,
-    title: settled ? `Payment received: ${stage.stage_name}` : `Payment failed: ${stage.stage_name}`,
+    title: settled ? `Payment Confirmed: ${stage.stage_name}` : `Payment Failed: ${stage.stage_name}`,
     message: settled
-      ? `We received your ${amount} payment for ${stage.stage_name} (ref ${reference}). The stage is now unlocked for submission.`
-      : `Your ${amount} payment for ${stage.stage_name} (ref ${reference}) did not go through. If you were debited, contact the bursary.`,
+      ? `We have confirmed your payment of ${amount} for ${stage.stage_name} (Reference: ${reference}).\n\nThis stage is now unlocked, and you can proceed to upload your required clearance documents and submit for officer review.`
+      : `Your payment of ${amount} for ${stage.stage_name} (Reference: ${reference}) was not completed successfully. If your account was debited, please contact the University Bursary with your reference number.`,
     stageId,
-    subject: `UI Clearance: ${settled ? 'payment received' : 'payment failed'}`,
+    subject: `UI Clearance: Payment ${settled ? 'Confirmed' : 'Failed'} (${stage.stage_name})`,
+    actionUrl: settled
+      ? `https://unibadan-final-year-clearance.vercel.app/student/stages/${stageId}`
+      : 'https://unibadan-final-year-clearance.vercel.app/student',
+    actionText: settled ? 'Upload Clearance Documents' : 'Return to Portal',
   });
 }
 
 /**
  * Initiate a payment for a clearance stage using Paystack.
  */
-async function initiatePayment(studentId, stageId) {
+async function initiatePayment(studentId, stageId, origin = null) {
   const stage = await queryOne(
     'SELECT id, stage_name, requires_payment, payment_amount FROM clearance_stages WHERE id = ?',
     [stageId]
@@ -75,6 +79,21 @@ async function initiatePayment(studentId, stageId) {
   const reference = `UI-PAY-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
   const amountInKobo = Math.round(Number(stage.payment_amount) * 100);
 
+  // Derive dynamic client URL for Paystack redirect
+  let frontendUrl = null;
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      frontendUrl = `${parsed.protocol}//${parsed.host}`;
+    } catch (_) {}
+  }
+  if (!frontendUrl) {
+    frontendUrl = (config.clientOrigin && !config.clientOrigin.includes('localhost'))
+      ? config.clientOrigin
+      : 'https://unibadan-final-year-clearance.vercel.app';
+  }
+  const callbackUrl = `${frontendUrl}/payment/callback`;
+
   // If Paystack Secret Key is configured, initialize with Paystack API
   if (config.paystack.enabled) {
     try {
@@ -84,7 +103,7 @@ async function initiatePayment(studentId, stageId) {
           email: user.email,
           amount: amountInKobo,
           reference,
-          callback_url: `${config.clientOrigin}/payment/callback`,
+          callback_url: callbackUrl,
           metadata: {
             student_id: studentId,
             student_name: user.full_name,
@@ -129,32 +148,8 @@ async function initiatePayment(studentId, stageId) {
       };
     } catch (err) {
       console.error('[paystack:initiate] failed:', err.response?.data || err.message);
-      // In development mode, provide simulated fallback if internet/DNS is unreachable
-      if (config.nodeEnv === 'development') {
-        console.warn('[paystack:fallback] Initiating fallback demo payment.');
-        await query(
-          `INSERT INTO payments (student_id, stage_id, amount, reference, rrr, status, gateway, authorization_url, paid_at)
-           VALUES (?, ?, ?, ?, ?, 'success', 'paystack_demo', NULL, NOW())`,
-          [studentId, stageId, stage.payment_amount, reference, reference]
-        );
-        await notifyPayment(studentId, stageId, 'success', reference);
-
-        try {
-          const { emitToUser, emitToRole } = require('./realtimeService');
-          emitToUser(studentId, 'payment:update', { stageId, status: 'success' });
-          emitToUser(studentId, 'clearance:update', { stageId });
-          emitToRole('admin', 'payment:update', { stageId });
-        } catch (_) {}
-
-        return {
-          reference,
-          amount: stage.payment_amount,
-          checkout: null,
-          simulated: true,
-          message: `Payment of ₦${Number(stage.payment_amount).toLocaleString('en-NG')} confirmed via Paystack Demo.`,
-        };
-      }
-      throw new ApiError('Failed to initialize Paystack payment: ' + (err.response?.data?.message || err.message), 503);
+      const detail = err.response?.data?.message || err.message;
+      throw new ApiError(`Paystack payment failed: ${detail}`, 400);
     }
   }
 

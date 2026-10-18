@@ -81,9 +81,11 @@ async function issueCertificate(studentId, generatedBy = null) {
     userId: student.id,
     phone: student.phone_number,
     email: student.email,
-    title: 'Clearance letter ready',
-    message: `Congratulations ${student.full_name}! All ${summary.total} stages are cleared. Your clearance letter (${certificateNo}) is ready to download from the portal. Verification code: ${verificationCode}.`,
-    subject: 'UI Clearance: your clearance letter is ready',
+    title: 'Final Clearance Letter Ready!',
+    message: `Congratulations ${student.full_name}!\n\nAll ${summary.total} clearance stages have been successfully approved by the University of Ibadan officers.\n\nYour official signed Final Clearance Letter (${certificateNo}) has been issued and is available for instant download from your student portal. Verification code: ${verificationCode}.`,
+    subject: 'Congratulations! Your UI Final Year Clearance Letter is Ready',
+    actionUrl: 'https://unibadan-final-year-clearance.vercel.app/student/certificate',
+    actionText: 'Download Clearance Letter',
   });
 
   try {
