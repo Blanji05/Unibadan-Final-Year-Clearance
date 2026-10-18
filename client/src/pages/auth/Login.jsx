@@ -92,12 +92,6 @@ export default function Login() {
           <br />
           <span style={{ fontSize: '0.85rem' }}>Accounts are created by the clearance administrator.</span>
         </p>
-
-        <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
-          <Link to="/" style={{ color: '#92400e', fontSize: '0.88rem', textDecoration: 'none', fontWeight: 500 }}>
-            &larr; Back to Homepage
-          </Link>
-        </div>
       </div>
     </div>
   );
