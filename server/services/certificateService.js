@@ -40,7 +40,7 @@ async function getCompletionSummary(studentId) {
  */
 async function issueCertificate(studentId, generatedBy = null) {
   const student = await queryOne(
-    'SELECT id, full_name, email, phone_number, matric_number, department, faculty FROM users WHERE id = ? AND role = "student"',
+    "SELECT id, full_name, email, phone_number, matric_number, department, faculty FROM users WHERE id = ? AND role = 'student'",
     [studentId]
   );
   if (!student) throw new ApiError('Student not found.', 404);

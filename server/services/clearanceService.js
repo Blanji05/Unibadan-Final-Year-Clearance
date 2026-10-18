@@ -286,7 +286,7 @@ async function assertCanSubmitStage(studentId, stageId) {
   // Payment check
   if (stage.requires_payment) {
     const paid = await queryOne(
-      'SELECT id FROM payments WHERE student_id = ? AND stage_id = ? AND status = "success"',
+      "SELECT id FROM payments WHERE student_id = ? AND stage_id = ? AND status = 'success'",
       [studentId, stageId]
     );
     if (!paid) {

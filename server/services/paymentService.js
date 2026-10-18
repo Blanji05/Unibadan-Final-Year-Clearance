@@ -62,7 +62,7 @@ async function initiatePayment(studentId, stageId, origin = null) {
 
   // Check for existing successful payment
   const existing = await queryOne(
-    'SELECT id, reference FROM payments WHERE student_id = ? AND stage_id = ? AND status = "success"',
+    "SELECT id, reference FROM payments WHERE student_id = ? AND stage_id = ? AND status = 'success'",
     [studentId, stageId]
   );
   if (existing) {
@@ -70,7 +70,7 @@ async function initiatePayment(studentId, stageId, origin = null) {
   }
 
   // Clear any abandoned pending checkout attempts
-  await query('DELETE FROM payments WHERE student_id = ? AND stage_id = ? AND status = "pending"', [
+  await query("DELETE FROM payments WHERE student_id = ? AND stage_id = ? AND status = 'pending'", [
     studentId,
     stageId,
   ]);
@@ -208,7 +208,7 @@ async function verifyPayment(reference) {
           throw new ApiError('Paid amount is less than the required clearance fee. Contact Bursary.', 402);
         }
 
-        await query('UPDATE payments SET status = "success", paid_at = NOW() WHERE id = ?', [payment.id]);
+        await query("UPDATE payments SET status = 'success', paid_at = NOW() WHERE id = ?", [payment.id]);
         await notifyPayment(payment.student_id, payment.stage_id, 'success', payment.reference);
 
         try {
@@ -222,7 +222,7 @@ async function verifyPayment(reference) {
 
         return { message: 'Payment verified successfully via Paystack.', status: 'success' };
       } else if (data?.status === 'abandoned' || data?.status === 'failed') {
-        await query('UPDATE payments SET status = "failed" WHERE id = ?', [payment.id]);
+        await query("UPDATE payments SET status = 'failed' WHERE id = ?", [payment.id]);
         await notifyPayment(payment.student_id, payment.stage_id, 'failed', payment.reference);
         throw new ApiError(data.gateway_response || 'Payment was not completed.', 402);
       } else {
@@ -236,7 +236,7 @@ async function verifyPayment(reference) {
   }
 
   // Simulated fallback
-  await query('UPDATE payments SET status = "success", paid_at = NOW() WHERE id = ?', [payment.id]);
+  await query("UPDATE payments SET status = 'success', paid_at = NOW() WHERE id = ?", [payment.id]);
   await notifyPayment(payment.student_id, payment.stage_id, 'success', payment.reference);
   return { message: 'Payment verified successfully.', status: 'success' };
 }
