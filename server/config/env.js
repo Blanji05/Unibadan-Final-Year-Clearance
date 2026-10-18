@@ -65,14 +65,15 @@ const config = {
   },
 
   mail: {
+    service: process.env.SMTP_SERVICE,
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT) || 587,
-    secure: String(process.env.SMTP_SECURE).toLowerCase() === 'true',
+    secure: String(process.env.SMTP_SECURE).toLowerCase() === 'true' || Number(process.env.SMTP_PORT) === 465,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
-    from: process.env.MAIL_FROM || 'UI Clearance <no-reply@clearance.ui.edu.ng>',
+    from: process.env.MAIL_FROM || (process.env.SMTP_USER ? `UI Clearance <${process.env.SMTP_USER}>` : 'UI Clearance <no-reply@clearance.ui.edu.ng>'),
     get enabled() {
-      return bool(this.host) && bool(this.user) && bool(this.pass);
+      return (bool(this.host) || bool(this.service)) && bool(this.user) && bool(this.pass);
     },
   },
 

@@ -55,7 +55,7 @@ const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex'
  * Start a password reset. Always resolves the same way whether or not the email
  * belongs to an account, so the endpoint cannot be used to enumerate users.
  */
-async function requestPasswordReset(email) {
+async function requestPasswordReset(email, origin = null) {
   const user = await queryOne('SELECT id, full_name, email, is_active FROM users WHERE email = ?', [email]);
   if (!user || !user.is_active) return;
 
@@ -78,7 +78,20 @@ async function requestPasswordReset(email) {
     [user.id, sha256(token)]
   );
 
-  const link = `${config.clientOrigin}/reset-password?token=${token}`;
+  let frontendUrl = null;
+  if (origin) {
+    try {
+      const parsed = new URL(origin);
+      frontendUrl = `${parsed.protocol}//${parsed.host}`;
+    } catch (_) {}
+  }
+  if (!frontendUrl) {
+    frontendUrl = (config.clientOrigin && !config.clientOrigin.includes('localhost'))
+      ? config.clientOrigin
+      : 'https://unibadan-final-year-clearance.vercel.app';
+  }
+
+  const link = `${frontendUrl}/reset-password?token=${token}`;
 
   // Without SMTP the mail is only logged, so surface the link in the server
   // console (never in production) to keep the flow usable in demos.
@@ -86,14 +99,46 @@ async function requestPasswordReset(email) {
     console.log(`[password-reset:simulated] ${user.email} -> ${link}`);
   }
 
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 580px; margin: 0 auto; padding: 32px 24px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; color: #1e293b;">
+      <div style="text-align: center; margin-bottom: 28px;">
+        <h2 style="color: #0f172a; margin: 0 0 6px 0; font-size: 22px; font-weight: 700;">University of Ibadan</h2>
+        <div style="color: #059669; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 0.5px;">Online Clearance Portal</div>
+      </div>
+      <div style="background-color: #f8fafc; border-radius: 8px; padding: 20px; margin-bottom: 24px; border: 1px solid #edf2f7;">
+        <p style="margin: 0 0 12px 0; font-size: 16px; color: #334155;">Hello <strong>${user.full_name}</strong>,</p>
+        <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
+          We received a request to reset the password for your UI Clearance account (<strong>${user.email}</strong>). Click the button below to choose a new password.
+        </p>
+      </div>
+      <div style="text-align: center; margin: 32px 0;">
+        <a href="${link}" target="_blank" style="background-color: #059669; color: #ffffff; padding: 14px 32px; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 8px; display: inline-block; box-shadow: 0 2px 4px rgba(5,150,105,0.2);">Reset Your Password</a>
+      </div>
+      <div style="font-size: 13px; line-height: 1.6; color: #64748b; margin-top: 24px;">
+        <p style="margin: 0 0 8px 0;">This password reset link is valid for <strong>${RESET_TTL_MINUTES} minutes</strong> and can only be used once.</p>
+        <p style="margin: 0 0 8px 0;">If the button above does not work, copy and paste this link into your browser:</p>
+        <div style="background-color: #f1f5f9; padding: 10px 14px; border-radius: 6px; word-break: break-all; font-family: monospace; font-size: 12px; color: #0284c7;">
+          <a href="${link}" style="color: #0284c7; text-decoration: underline;">${link}</a>
+        </div>
+      </div>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 28px 0 16px 0;" />
+      <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 0;">
+        If you did not request this password reset, please ignore this email. Your account remains secure.
+      </p>
+    </div>
+  `;
+
   await sendEmail({
     to: user.email,
-    subject: 'UI Clearance: reset your password',
+    subject: 'University of Ibadan Clearance - Reset Your Password',
     text:
-      `Hi ${user.full_name},\n\n` +
-      `Use the link below to choose a new password. It works once and expires in ${RESET_TTL_MINUTES} minutes.\n\n` +
+      `Hello ${user.full_name},\n\n` +
+      `We received a request to reset your password for the UI Online Clearance Portal.\n\n` +
+      `Click the link below or copy it to your browser to choose a new password:\n` +
       `${link}\n\n` +
-      `If you did not ask for this, you can ignore this email - your password has not changed.`,
+      `This link will expire in ${RESET_TTL_MINUTES} minutes.\n` +
+      `If you did not request this reset, please ignore this email.\n`,
+    html,
   });
 }
 

@@ -13,12 +13,18 @@ let transporter = null;
 
 function getTransporter() {
   if (!transporter) {
-    transporter = nodemailer.createTransport({
-      host: config.mail.host,
-      port: config.mail.port,
-      secure: config.mail.secure,
-      auth: { user: config.mail.user, pass: config.mail.pass },
-    });
+    const transportConfig = config.mail.service
+      ? {
+          service: config.mail.service,
+          auth: { user: config.mail.user, pass: config.mail.pass },
+        }
+      : {
+          host: config.mail.host,
+          port: config.mail.port,
+          secure: config.mail.secure,
+          auth: { user: config.mail.user, pass: config.mail.pass },
+        };
+    transporter = nodemailer.createTransport(transportConfig);
   }
   return transporter;
 }
@@ -36,8 +42,15 @@ async function sendEmail({ to, subject, text, html }) {
   }
 
   try {
-    await getTransporter().sendMail({ from: config.mail.from, to, subject, text, html: html || text });
-    return { status: 'sent' };
+    const info = await getTransporter().sendMail({
+      from: config.mail.from,
+      to,
+      subject,
+      text,
+      html: html || text,
+    });
+    console.log(`[email:sent] -> ${to} (msgId: ${info?.messageId || 'ok'})`);
+    return { status: 'sent', messageId: info?.messageId };
   } catch (error) {
     console.warn('[email] send failed:', error.message);
     return { status: 'failed', error: error.message };

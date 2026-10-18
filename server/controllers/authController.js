@@ -18,7 +18,8 @@ const me = asyncHandler(async (req, res) => {
 
 /** POST /api/auth/forgot-password - identical response whether or not the email exists. */
 const forgotPassword = asyncHandler(async (req, res) => {
-  await authService.requestPasswordReset(req.body.email);
+  const origin = req.headers.origin || req.headers.referer || null;
+  await authService.requestPasswordReset(req.body.email, origin);
   return sendSuccess(res, {
     message: 'If an account exists for that email, a reset link is on its way.',
   });

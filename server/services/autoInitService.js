@@ -4,11 +4,34 @@ const path = require('path');
 const bcrypt = require('bcryptjs');
 const { pool, query, queryOne } = require('../config/db');
 const { config } = require('../config/env');
+const { ACADEMIC_STRUCTURE, UI_HALLS, slugify } = require('../config/academicStructure');
 
 const SCHEMA_PATHS = [
   path.join(__dirname, '..', 'schema.sql'),
   path.join(__dirname, '..', '..', 'database', 'schema.sql'),
 ];
+
+const CENTRAL_STAGES = [
+  { code: 'library', name: 'Kenneth Dike Library Officer' },
+  { code: 'clinic', name: 'Jaja Health Clinic Officer' },
+  { code: 'alumni', name: 'Alumni Relations Officer' },
+  { code: 'sports', name: 'Sports Council Officer' },
+  { code: 'lodgings', name: 'Student Lodgings Officer' },
+  { code: 'bursar', name: 'Bursary Officer' },
+  { code: 'student_affairs', name: 'Student Affairs Officer' },
+];
+
+const HALL_EMAIL_SLUGS = {
+  'Mellanby Hall': 'mellanby',
+  'Tedder Hall': 'tedder',
+  'Kuti Hall': 'kuti',
+  'Sultan Bello Hall': 'sultan-bello',
+  'Nnamdi Azikiwe Hall': 'nnamdi-azikiwe',
+  'Independence Hall': 'independence',
+  'Queen Elizabeth II Hall': 'queen-elizabeth-ii',
+  'Queen Idia Hall': 'queen-idia',
+  'Obafemi Awolowo Hall': 'obafemi-awolowo',
+};
 
 async function ensureSchemaAndSeed() {
   try {
@@ -158,24 +181,134 @@ async function ensureSchemaAndSeed() {
       console.log('[autoInit] Created default admin account: admin@ui.edu.ng');
     }
 
-    // 7. Ensure demo officers exist
-    const officerCount = await queryOne("SELECT COUNT(*) AS c FROM users WHERE role = 'officer'");
-    if (!officerCount || Number(officerCount.c) === 0) {
-      const hash = await bcrypt.hash(config.seedPassword || 'Password123!', 12);
-      const stages = await query("SELECT code, stage_name FROM clearance_stages");
-      for (const st of stages) {
-        const offEmail = `${st.code}.officer@ui.edu.ng`;
-        const exists = await queryOne("SELECT id FROM users WHERE email = ?", [offEmail]);
-        if (!exists) {
+    // 7. Ensure all designated officers exist (Central, Halls, Faculties, Departments)
+    const officerHash = await bcrypt.hash(config.seedPassword || 'Password123!', 10);
+    const existingUsers = await query("SELECT id, email, section_code, faculty, department, hall FROM users");
+    const existingUserMap = new Map();
+    existingUsers.forEach((u) => existingUserMap.set(String(u.email || '').toLowerCase().trim(), u));
+
+    // A. Seed Central Stage Officers
+    for (const st of CENTRAL_STAGES) {
+      const email = `${st.code}.officer@ui.edu.ng`.toLowerCase();
+      if (!existingUserMap.has(email)) {
+        await query(
+          `INSERT INTO users (full_name, email, password_hash, role, section_code, phone_number, is_active)
+           VALUES (?, ?, ?, 'officer', ?, '08030000010', TRUE)`,
+          [st.name, email, officerHash, st.code]
+        );
+        existingUserMap.set(email, { email });
+      }
+    }
+
+    // B. Seed the 9 UI Residential Halls
+    for (let i = 0; i < UI_HALLS.length; i++) {
+      const hallName = UI_HALLS[i];
+      const slug = HALL_EMAIL_SLUGS[hallName] || slugify(hallName);
+      const email = `hall.${slug}@ui.edu.ng`.toLowerCase();
+      const fullName = `Hall Officer - ${hallName}`;
+      const phone = `080400000${(i + 1).toString().padStart(2, '0')}`;
+
+      const existing = existingUserMap.get(email);
+      if (!existing) {
+        await query(
+          `INSERT INTO users (full_name, email, password_hash, role, section_code, hall, phone_number, title, is_active)
+           VALUES (?, ?, ?, 'officer', 'hall', ?, ?, 'Hall Clearance Officer', TRUE)`,
+          [fullName, email, officerHash, hallName, phone]
+        );
+        existingUserMap.set(email, { email, hall: hallName });
+      } else {
+        await query(
+          `UPDATE users 
+              SET full_name = ?, section_code = 'hall', hall = ?, phone_number = ?, 
+                  title = 'Hall Clearance Officer', is_active = TRUE 
+            WHERE id = ?`,
+          [fullName, hallName, phone, existing.id]
+        );
+      }
+    }
+
+    // C. Seed Faculty Officers
+    for (const item of ACADEMIC_STRUCTURE) {
+      const facSlug = slugify(item.faculty);
+      const email = `fac.${facSlug}@ui.edu.ng`.toLowerCase();
+      const cleanFacName = item.faculty.replace(/^Faculty of\s+/i, '');
+      const fullName = `Faculty Officer - ${cleanFacName}`;
+
+      const existing = existingUserMap.get(email);
+      if (!existing) {
+        await query(
+          `INSERT INTO users (full_name, email, password_hash, role, section_code, faculty, phone_number, title, is_active)
+           VALUES (?, ?, ?, 'officer', 'faculty', ?, '08020000000', 'Faculty Clearance Officer', TRUE)`,
+          [fullName, email, officerHash, item.faculty]
+        );
+        existingUserMap.set(email, { email, faculty: item.faculty });
+      } else {
+        await query(
+          `UPDATE users 
+              SET full_name = ?, section_code = 'faculty', faculty = ?, 
+                  title = 'Faculty Clearance Officer', is_active = TRUE 
+            WHERE id = ?`,
+          [fullName, item.faculty, existing.id]
+        );
+      }
+    }
+
+    // D. Seed Department Officers
+    const seenDeptEmails = new Set();
+    for (const item of ACADEMIC_STRUCTURE) {
+      for (const dept of item.departments) {
+        let deptSlug = slugify(dept);
+        let email = `dept.${deptSlug}@ui.edu.ng`.toLowerCase();
+        if (seenDeptEmails.has(email)) {
+          email = `dept.${deptSlug}-${slugify(item.faculty)}@ui.edu.ng`.toLowerCase();
+        }
+        seenDeptEmails.add(email);
+
+        const fullName = `Department Officer - ${dept}`;
+        const existing = existingUserMap.get(email);
+        if (!existing) {
           await query(
-            `INSERT INTO users (full_name, email, password_hash, role, section_code, phone_number)
-             VALUES (?, ?, ?, 'officer', ?, '08030000010')`,
-            [`${st.stage_name} Officer`, offEmail, hash, st.code]
+            `INSERT INTO users (full_name, email, password_hash, role, section_code, faculty, department, phone_number, title, is_active)
+             VALUES (?, ?, ?, 'officer', 'department', ?, ?, '08030000000', 'Department Clearance Officer', TRUE)`,
+            [fullName, email, officerHash, item.faculty, dept]
+          );
+          existingUserMap.set(email, { email, faculty: item.faculty, department: dept });
+        } else {
+          await query(
+            `UPDATE users 
+                SET full_name = ?, section_code = 'department', faculty = ?, department = ?, 
+                    title = 'Department Clearance Officer', is_active = TRUE 
+              WHERE id = ?`,
+            [fullName, item.faculty, dept, existing.id]
           );
         }
       }
-      console.log('[autoInit] Seeded section officers.');
     }
+
+    // E. Remove generic and discontinued hall/faculty/department accounts
+    const obsoleteEmails = [
+      'department.officer@ui.edu.ng',
+      'faculty.officer@ui.edu.ng',
+      'hall.officer@ui.edu.ng',
+      'hall.tafawa-balewa@ui.edu.ng',
+      'hall.alexander-brown@ui.edu.ng',
+      'hall.off-campus@ui.edu.ng',
+    ];
+    try {
+      const placeholders = obsoleteEmails.map(() => '?').join(', ');
+      const obsoleteUsers = await query(`SELECT id FROM users WHERE email IN (${placeholders})`, obsoleteEmails);
+      if (obsoleteUsers && obsoleteUsers.length > 0) {
+        const ids = obsoleteUsers.map((u) => u.id);
+        const idPlaceholders = ids.map(() => '?').join(', ');
+        await query(`UPDATE clearance_status SET officer_id = NULL WHERE officer_id IN (${idPlaceholders})`, ids);
+        await query(`DELETE FROM password_resets WHERE user_id IN (${idPlaceholders})`, ids);
+        await query(`DELETE FROM users WHERE id IN (${idPlaceholders})`, ids);
+        console.log(`[autoInit] Cleaned up ${ids.length} obsolete/generic officer accounts.`);
+      }
+    } catch (cleanErr) {
+      console.warn('[autoInit] Obsolete accounts cleanup notice:', cleanErr.message);
+    }
+    console.log('[autoInit] Completed seeding of all UI faculty, department, hall, and central officers.');
 
     return { success: true, message: 'All tables, columns, and accounts initialized successfully.' };
   } catch (error) {
@@ -185,3 +318,4 @@ async function ensureSchemaAndSeed() {
 }
 
 module.exports = { ensureSchemaAndSeed };
+
