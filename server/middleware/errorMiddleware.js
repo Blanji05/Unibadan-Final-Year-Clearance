@@ -37,7 +37,7 @@ function errorHandler(error, req, res, next) {
   console.error('[error]', error);
   return sendError(
     res,
-    config.nodeEnv === 'production' ? 'An unexpected error occurred.' : error.message,
+    error.message || 'An unexpected error occurred.',
     error.status || 500
   );
 }
