@@ -523,6 +523,10 @@ body {
   flex-direction: column;
   gap: 0.85rem;
   transition: box-shadow 0.15s ease, border-color 0.15s ease;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .stage-item:hover {
@@ -537,6 +541,10 @@ body {
   border-radius: 8px;
   padding: 0.75rem 0.95rem;
   margin-top: 0.15rem;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .stage-requirements-header {
