@@ -280,6 +280,14 @@ async function ensureSchemaAndSeed() {
                     title = 'Department Clearance Officer', is_active = TRUE 
               WHERE id = ?`,
             [fullName, item.faculty, dept, existing.id]
+        }
+
+        // Common shorthand alias for Computer Science
+        if (dept.toLowerCase().includes('computer science') && !existingUserMap.has('dept.computer-science@ui.edu.ng')) {
+          await query(
+            `INSERT IGNORE INTO users (full_name, email, password_hash, role, section_code, faculty, department, phone_number, title, is_active)
+             VALUES (?, 'dept.computer-science@ui.edu.ng', ?, 'officer', 'department', ?, ?, '08030000000', 'Department Clearance Officer', TRUE)`,
+            [fullName, officerHash, item.faculty, dept]
           );
         }
       }
