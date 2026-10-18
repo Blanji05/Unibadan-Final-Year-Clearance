@@ -69,10 +69,15 @@ app.get('/api/health', (req, res) => {
 
 const { handleSseConnection } = require('./services/realtimeService');
 const { ACADEMIC_STRUCTURE } = require('./config/academicStructure');
+const { ensureSchemaAndSeed } = require('./services/autoInitService');
 
 app.get('/api/realtime/stream', handleSseConnection);
 app.get('/api/system/academic-structure', (req, res) => {
   res.json({ success: true, data: { faculties: ACADEMIC_STRUCTURE } });
+});
+app.get('/api/system/init-db', async (req, res) => {
+  const result = await ensureSchemaAndSeed();
+  res.json(result);
 });
 
 app.use('/api/auth', authRoutes);
@@ -96,6 +101,7 @@ async function start() {
   try {
     await assertConnection();
     console.log(`[db] connected to ${config.db.database}@${config.db.host}:${config.db.port}`);
+    await ensureSchemaAndSeed();
   } catch (error) {
     console.error(`\n[db] Could not connect to MySQL: ${error.message}`);
     console.error('     Check that MySQL is running and server/.env is correct.');
