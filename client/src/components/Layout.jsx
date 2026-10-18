@@ -219,19 +219,23 @@ export default function Layout() {
           </button>
 
           <div className="topbar-title">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <div className="topbar-title-inner">
               <h2>{current?.label || 'Dashboard'}</h2>
               {user?.role === 'officer' && (
                 <span
+                  className="topbar-badge"
+                  title={
+                    user.department
+                      ? `Dept: ${user.department}`
+                      : user.hall
+                      ? `Hall: ${user.hall}`
+                      : user.faculty
+                      ? `Faculty of ${user.faculty}`
+                      : (user.section_code ? `${user.section_code} Section` : 'Officer')
+                  }
                   style={{
-                    display: 'inline-block',
                     backgroundColor: user.section_code === 'department' ? '#fef7ee' : user.section_code === 'faculty' ? '#f0fdf4' : '#f8fafc',
                     color: user.section_code === 'department' ? '#78350f' : user.section_code === 'faculty' ? '#15803d' : '#334155',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    border: '1px solid #cbd5e1',
                   }}
                 >
                   {user.department

@@ -92,8 +92,8 @@ async function migrate() {
       code: 'lodgings',
       stage_name: 'Lodgings Clearance',
       stage_order: 8,
-      location: 'Student Affairs, Room 14 (Behind Central Admin)',
-      description: 'Student Affairs Room 14 verification of hall, lodgings, and preceding clearances before proceeding to Bursary.',
+      location: 'Student Affairs (Behind Central Admin)',
+      description: 'Student Affairs verification of hall, lodgings, and preceding clearances before proceeding to Bursary.',
       estimated_duration_days: 1,
       requires_payment: false,
       payment_amount: 0.0,
@@ -157,7 +157,7 @@ async function migrate() {
     { id: 15, code: 'hall_clearance_slip', label: 'Hall Clearance Slip', description: 'Signed and stamped Hall of Residence clearance slip' },
     { id: 16, code: 'sports_clearance_slip', label: 'Sports Council Clearance Slip', description: 'Official Sports Council clearance sign-off' },
     { id: 17, code: 'faculty_clearance_slip', label: 'Faculty Clearance Slip', description: 'Signed and stamped clearance form from Faculty Office' },
-    { id: 18, code: 'lodgings_clearance_slip', label: 'Lodgings Clearance Slip (Room 14)', description: 'Student Affairs Room 14 lodgings sign-off' },
+    { id: 18, code: 'lodgings_clearance_slip', label: 'Lodgings Clearance Slip', description: 'Student Affairs Lodgings sign-off' },
     { id: 19, code: 'bursar_clearance_slip', label: 'Bursar Clearance Letter', description: 'Official Bursary clearance letter' },
   ];
 
@@ -209,7 +209,7 @@ async function migrate() {
     { stage_id: 7, doc_id: 9, is_mandatory: true }, // Alumni clearance
     { stage_id: 7, doc_id: 15, is_mandatory: true }, // Hall clearance
 
-    // Step 8: Lodgings (Room 14)
+    // Step 8: Lodgings
     { stage_id: 8, doc_id: 4, is_mandatory: true }, // School ID
     { stage_id: 8, doc_id: 15, is_mandatory: true }, // Hall clearance
     { stage_id: 8, doc_id: 18, is_mandatory: true }, // Lodgings verification form

@@ -336,6 +336,24 @@ async function ensureSchemaAndSeed() {
     } catch (cleanErr) {
       console.warn('[autoInit] Obsolete accounts cleanup notice:', cleanErr.message);
     }
+    // F. Clean up "(Room 14)" naming in document_types and clearance_stages
+    try {
+      await query(
+        `UPDATE document_types 
+            SET label = 'Lodgings Clearance Slip', 
+                description = 'Student Affairs Lodgings sign-off' 
+          WHERE code = 'lodgings_clearance_slip' OR label LIKE '%Room 14%'`
+      );
+      await query(
+        `UPDATE clearance_stages 
+            SET location = 'Student Affairs (Behind Central Admin)', 
+                description = 'Student Affairs verification of hall, lodgings, and preceding clearances before proceeding to Bursary.' 
+          WHERE code = 'lodgings'`
+      );
+    } catch (roomErr) {
+      console.warn('[autoInit] Room 14 label cleanup notice:', roomErr.message);
+    }
+
     console.log('[autoInit] Completed seeding of all UI faculty, department, hall, and central officers.');
 
     return { success: true, message: 'All tables, columns, and accounts initialized successfully.' };

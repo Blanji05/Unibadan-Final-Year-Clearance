@@ -30,7 +30,7 @@ async function seedSectionDocuments() {
     { code: 'library_clearance_slip', label: 'Library Clearance Slip', description: 'Stamped Kenneth Dike Library clearance slip' },
     { code: 'hall_clearance_slip', label: 'Hall Clearance Slip', description: 'Signed and stamped Hall of Residence clearance slip' },
     { code: 'faculty_clearance_slip', label: 'Faculty Clearance Slip', description: 'Signed and stamped clearance form from Faculty Office' },
-    { code: 'lodgings_clearance_slip', label: 'Lodgings Clearance Slip (Room 14)', description: 'Student Affairs Room 14 lodgings sign-off' },
+    { code: 'lodgings_clearance_slip', label: 'Lodgings Clearance Slip', description: 'Student Affairs Lodgings sign-off' },
     { code: 'bursar_clearance_slip', label: 'Bursary Clearance Letter / Slip', description: 'Official Bursary clearance letter' },
     { code: 'graduation_fee_receipt', label: 'Graduation Fee Receipt', description: 'Official receipt for graduation and convocation' },
     { code: 'statement_of_result', label: 'Statement of Result (2 Photocopies)', description: 'Two photocopies of student personal statement of result' },

@@ -246,8 +246,8 @@ VALUES
    'Located beside Faculty of Education on the way to Social Sciences from KDL. Requirements: School ID Card, approved Hall Clearance, Alumni Clearance, and KDL Library Clearance.',1,FALSE,0.00),
   (7,'faculty','Faculty Clearance',7,'Faculty Office',
    'Verification at your Faculty Office (~30 minutes). Requires approved Departmental Clearance, Sports Clearance, KDL Library Clearance, Alumni Clearance, and Hall Clearance.',2,FALSE,0.00),
-  (8,'lodgings','Lodgings Clearance',8,'Student Affairs, Room 14 (Behind Central Admin)',
-   'Student Affairs Room 14 verification of hall, lodgings, and preceding clearances before proceeding to Bursary.',1,FALSE,0.00),
+  (8,'lodgings','Lodgings Clearance',8,'Student Affairs (Behind Central Admin)',
+   'Student Affairs verification of hall, lodgings, and preceding clearances before proceeding to Bursary.',1,FALSE,0.00),
   (9,'bursar','Bursar Clearance',9,'Bursar Office',
    'Thorough financial verification (minimum 2 days). Requirements: Jaja clearance with passport photograph, Graduation Receipt, Alumni receipt, Hall & Maintenance clearance, Sports clearance, All school fee receipts (100L to finals), Faculty & Departmental clearance, Lodgings clearance, Library clearance, and 2 photocopies of personal statement of result (from Examinations Office).',3,FALSE,0.00),
   (10,'student_affairs','Student Affairs Division Clearance (Final)',10,'Student Affairs Division (Central Admin)',
@@ -290,7 +290,7 @@ INSERT INTO document_types (id, code, label, description) VALUES
   (15,'hall_clearance_slip','Hall Clearance Slip','Signed and stamped Hall of Residence clearance slip'),
   (16,'sports_clearance_slip','Sports Council Clearance Slip','Official Sports Council clearance sign-off'),
   (17,'faculty_clearance_slip','Faculty Clearance Slip','Signed and stamped clearance form from Faculty Office'),
-  (18,'lodgings_clearance_slip','Lodgings Clearance Slip (Room 14)','Student Affairs Room 14 lodgings sign-off'),
+  (18,'lodgings_clearance_slip','Lodgings Clearance Slip','Student Affairs Lodgings sign-off'),
   (19,'bursar_clearance_slip','Bursar Clearance Certificate','Official Bursary clearance certificate')
 ON DUPLICATE KEY UPDATE label=VALUES(label), description=VALUES(description);
 
