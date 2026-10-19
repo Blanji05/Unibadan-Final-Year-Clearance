@@ -91,25 +91,63 @@ app.use('/api/notifications', notificationRoutes);
 app.use(notFound);
 app.use(errorHandler);
 
+process.on('uncaughtException', (err) => {
+  console.error('[server] Uncaught Exception:', err.message, err.stack);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[server] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+// Self-ping heartbeat: pings the health endpoint every 9 minutes
+// to prevent Render free-tier instances from falling asleep.
+function startKeepAliveHeartbeat() {
+  const isProduction = config.nodeEnv === 'production' || Boolean(process.env.RENDER);
+  if (!isProduction) return;
+
+  const axios = require('axios');
+  const targetUrl = 'https://unibadan-final-year-clearance.onrender.com/api/health';
+  const INTERVAL_MS = 9 * 60 * 1000; // 9 minutes
+
+  console.log('[heartbeat] Keep-alive service active. Pinging every 9 minutes.');
+  setInterval(async () => {
+    try {
+      const res = await axios.get(targetUrl, { timeout: 15000 });
+      console.log(`[heartbeat] Keep-alive ping successful (status ${res.status})`);
+    } catch (err) {
+      console.warn(`[heartbeat] Keep-alive ping note: ${err.message}`);
+    }
+  }, INTERVAL_MS);
+}
+
+// Resilient DB initializer with automatic retry
+async function initDatabaseWithRetry(maxRetries = 10, delayMs = 3000) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      await assertConnection();
+      console.log(`[db] Connected to ${config.db.database}@${config.db.host}:${config.db.port}`);
+      await ensureSchemaAndSeed();
+      console.log('[db] Database schema and initial seeds ready.');
+      return;
+    } catch (error) {
+      console.warn(`[db] Connection attempt ${attempt}/${maxRetries} failed: ${error.message}`);
+      if (attempt < maxRetries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      } else {
+        console.error('[db] Could not connect to MySQL after maximum retries. Continuing to run.');
+      }
+    }
+  }
+}
+
 async function start() {
   try {
     assertRequiredConfig();
   } catch (error) {
-    console.error(`\n${error.message}\n`);
-    process.exit(1);
+    console.error(`\n[config] ${error.message}\n`);
   }
 
-  try {
-    await assertConnection();
-    console.log(`[db] connected to ${config.db.database}@${config.db.host}:${config.db.port}`);
-    await ensureSchemaAndSeed();
-  } catch (error) {
-    console.error(`\n[db] Could not connect to MySQL: ${error.message}`);
-    console.error('     Check that MySQL is running and server/.env is correct.');
-    console.error('     Then run:  npm run db:init\n');
-    process.exit(1);
-  }
-
+  // 1. Immediately bind the HTTP port so Render/cloud platforms detect healthy startup
   const server = app.listen(config.port, () => {
     console.log(`[server] listening on http://localhost:${config.port}`);
     console.log(`[server] CORS origin: ${config.clientOrigin}`);
@@ -117,21 +155,22 @@ async function start() {
     if (!config.paystack.enabled) console.log('[payments] Paystack not configured - payments are simulated');
     if (!config.termii.enabled) console.log('[sms] Termii not configured - messages are logged to console');
     if (!config.mail.enabled) console.log('[email] SMTP not configured - emails are logged to console');
+
+    // 2. Start keep-alive ping so server never sleeps on Render
+    startKeepAliveHeartbeat();
+
+    // 3. Connect to database and seed in background with retries
+    initDatabaseWithRetry().catch((err) => {
+      console.error('[db] Uncaught error during background DB init:', err.message);
+    });
   });
 
-  // A stale server from a previous run is the usual cause here, so say that
-  // plainly instead of dumping an unhandled 'error' event stack trace.
   server.on('error', (error) => {
     if (error.code === 'EADDRINUSE') {
       console.error(`\n[server] Port ${config.port} is already in use.`);
-      console.error('     Another instance is probably still running. Either stop it:');
-      console.error(`       netstat -ano | findstr :${config.port}     (find the PID)`);
-      console.error('       taskkill /F /PID <pid>');
-      console.error(`     ...or set a different PORT in server/.env\n`);
-      process.exit(1);
+    } else {
+      console.error(`\n[server] Server error: ${error.message}\n`);
     }
-    console.error(`\n[server] failed to start: ${error.message}\n`);
-    process.exit(1);
   });
 }
 

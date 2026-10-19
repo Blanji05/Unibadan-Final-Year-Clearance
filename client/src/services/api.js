@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || '/api',
+  timeout: 30000,
   headers: {
     'Bypass-Tunnel-Reminder': 'true',
   },
@@ -24,11 +25,21 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
-    const message =
+
+    let message =
       error.response?.data?.message ||
-      error.response?.data?.errors?.[0]?.message ||
-      error.message ||
-      'Something went wrong.';
+      error.response?.data?.errors?.[0]?.message;
+
+    if (!message) {
+      if (error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+        message = 'Request timed out. The server is connecting, please retry in a moment.';
+      } else if (!error.response) {
+        message = 'Cannot reach the clearance server. Please check your internet connection and try again.';
+      } else {
+        message = error.message || 'Something went wrong.';
+      }
+    }
+
     return Promise.reject(new Error(message));
   }
 );

@@ -4,6 +4,11 @@
 const mysql = require('mysql2/promise');
 const { config } = require('./env');
 
+const isRemoteDb =
+  Boolean(config.db.host) &&
+  config.db.host !== 'localhost' &&
+  config.db.host !== '127.0.0.1';
+
 const pool = mysql.createPool({
   host: config.db.host,
   port: config.db.port,
@@ -12,13 +17,12 @@ const pool = mysql.createPool({
   database: config.db.database,
   waitForConnections: true,
   connectionLimit: 15,
-  maxIdle: 10,
-  idleTimeout: 60000,
   enableKeepAlive: true,
   keepAliveInitialDelay: 10000,
   queueLimit: 0,
   dateStrings: true,
   charset: 'utf8mb4_general_ci',
+  ...(isRemoteDb ? { ssl: { rejectUnauthorized: false } } : {}),
 });
 
 /** Run a query and return the rows. */
