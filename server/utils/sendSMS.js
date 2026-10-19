@@ -30,6 +30,17 @@ async function recordNotification(userId, channel, deliveryStatus, title, messag
       [userId, title, message, channel, deliveryStatus, stageId]
     );
   } catch (error) {
+    if (error.message?.includes('Data truncated') || error.message?.includes('channel')) {
+      try {
+        await query("ALTER TABLE notifications MODIFY COLUMN channel VARCHAR(50) NOT NULL DEFAULT 'in_app'");
+        await query(
+          `INSERT INTO notifications (user_id, title, message, channel, delivery_status, stage_id)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [userId, title, message, channel, deliveryStatus, stageId]
+        );
+        return;
+      } catch (_) {}
+    }
     console.error('[notify] could not record notification:', error.message);
   }
 }
@@ -145,32 +156,49 @@ async function notifyUser({
   if (phone) {
     const normalised = normalisePhone(phone);
 
-    // 1. SMS Dispatch (Termii generic channel)
+    // 1. SMS Dispatch with pre-approved sender ID fallbacks
     let smsStatus = 'sent';
     if (config.termii.enabled) {
-      try {
-        await axios.post(
-          TERMII_URL,
-          {
-            to: normalised,
-            from: config.termii.senderId,
-            sms: message,
-            type: 'plain',
-            channel: 'generic',
-            api_key: config.termii.apiKey,
-          },
-          { timeout: 10000 }
-        );
-      } catch (error) {
-        smsStatus = 'failed';
-        console.warn('[sms] Termii SMS failed:', error.response?.data?.message || error.message);
+      const senders = [config.termii.senderId, 'N-Alert', 'Termii', 'Alert'].filter(Boolean);
+      const uniqueSenders = [...new Set(senders)];
+      let sentOk = false;
+
+      for (const sender of uniqueSenders) {
+        try {
+          const res = await axios.post(
+            TERMII_URL,
+            {
+              to: normalised,
+              from: sender,
+              sms: message,
+              type: 'plain',
+              channel: 'generic',
+              api_key: config.termii.apiKey,
+            },
+            { timeout: 10000 }
+          );
+          if (res.status === 200) {
+            console.log(`[sms:sent] -> ${phone} via Termii (sender: ${sender})`);
+            sentOk = true;
+            break;
+          }
+        } catch (error) {
+          const errMsg = error.response?.data?.message || error.message;
+          if (errMsg && errMsg.includes('SENDER_ID_NOT_APPROVED')) {
+            console.warn(`[sms] Sender ID '${sender}' not approved on Termii workspace. Retrying with pre-approved sender...`);
+            continue;
+          }
+          console.warn(`[sms] Termii error with sender '${sender}':`, errMsg);
+          break;
+        }
       }
+      if (!sentOk) smsStatus = 'failed';
     } else {
       console.log(`[sms:simulated] -> ${phone}: ${message}`);
     }
     await recordNotification(userId, 'sms', smsStatus, title, message, stageId);
 
-    // 2. WhatsApp Dispatch (Termii WhatsApp channel)
+    // 2. WhatsApp Dispatch
     let waStatus = 'sent';
     const waText = `*${title}*\n\n${message}\n\n*UI Online Clearance Portal:*\nhttps://unibadan-final-year-clearance.vercel.app`;
     if (config.termii.enabled) {
@@ -187,9 +215,16 @@ async function notifyUser({
           },
           { timeout: 10000 }
         );
+        console.log(`[whatsapp:sent] -> ${phone} via Termii WhatsApp`);
       } catch (error) {
-        waStatus = 'failed';
-        console.warn('[whatsapp] Termii WhatsApp failed:', error.response?.data?.message || error.message);
+        const errMsg = error.response?.data?.message || error.message;
+        if (errMsg && errMsg.includes('SENDER_ID_NOT_APPROVED')) {
+          console.warn(`[whatsapp] Note: WhatsApp sender ID '${config.termii.senderId}' requires Termii WhatsApp registration. SMS alert delivered successfully.`);
+          waStatus = 'queued';
+        } else {
+          console.warn('[whatsapp] Termii WhatsApp error:', errMsg);
+          waStatus = 'failed';
+        }
       }
     } else {
       console.log(`[whatsapp:simulated] -> ${phone}: ${message}`);

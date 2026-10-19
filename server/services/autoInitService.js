@@ -143,6 +143,9 @@ async function ensureSchemaAndSeed(force = false) {
       try {
         await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL');
       } catch (_) {}
+      try {
+        await query("ALTER TABLE notifications MODIFY COLUMN channel VARCHAR(50) NOT NULL DEFAULT 'in_app'");
+      } catch (_) {}
     } catch (_) {}
 
     // Fast path: if schema and officers are already seeded, skip heavy startup processing

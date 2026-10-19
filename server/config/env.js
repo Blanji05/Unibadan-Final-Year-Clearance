@@ -71,9 +71,11 @@ const config = {
     secure: String(process.env.SMTP_SECURE).toLowerCase() === 'true' || Number(process.env.SMTP_PORT) === 465,
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
+    brevoApiKey: process.env.BREVO_API_KEY,
+    resendApiKey: process.env.RESEND_API_KEY,
     from: process.env.MAIL_FROM || (process.env.SMTP_USER ? `UI Clearance <${process.env.SMTP_USER}>` : 'UI Clearance <no-reply@clearance.ui.edu.ng>'),
     get enabled() {
-      return (bool(this.host) || bool(this.service)) && bool(this.user) && bool(this.pass);
+      return bool(this.brevoApiKey) || bool(this.resendApiKey) || Boolean(this.pass?.startsWith('xkeysib-')) || ((bool(this.host) || bool(this.service)) && bool(this.user) && bool(this.pass));
     },
   },
 
