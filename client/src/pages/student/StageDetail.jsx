@@ -44,13 +44,13 @@ const UI_STAGE_GUIDES = {
     ],
   },
   3: {
-    title: 'Jaja Clinic Clearance (University Health Services)',
+    title: 'University Health Services Clearance',
     time: 'Within 24 Hours',
     instructions: [
-      'Ensure your student clinic health records are in good standing.',
-      'Upload or snap a clear, legible photograph of your valid JAJA Health Registration Card below.',
-      'Click "Submit for Clearance" to route your request to University Health Services.',
-      'Once approved, download your official stamped Jaja Clinic Clearance Slip (PDF) directly from this page.',
+      'Ensure your student health records are in good standing.',
+      'Upload or snap a clear, legible photograph of your valid University Health Services (UHS) Card below.',
+      'Click "Submit for Clearance" to route your request to University Health Services for digital review.',
+      'Once approved, download your official stamped Health Services Clearance Slip (PDF) directly from this page.',
     ],
   },
   4: {
@@ -107,8 +107,8 @@ const UI_STAGE_GUIDES = {
     title: 'Bursar Clearance (Financial Verification)',
     time: '1 to 2 Working Days',
     instructions: [
-      'Ensure all earlier section clearances (Library, Hall, Department, Sports, Faculty, Lodgings, Jaja) are cleared.',
-      'Upload all required financial records: School Fee Receipts (100L through final year), Graduation Fee Receipt, Alumni Receipt, Jaja Clearance (with passport photo), Statement of Result (photocopies), and earlier clearance slips.',
+      'Ensure all earlier section clearances (Library, Hall, Department, Sports, Faculty, Lodgings, Health Services) are cleared.',
+      'Upload all required financial records: School Fee Receipts (100L through final year), Graduation Fee Receipt, Alumni Receipt, Health Services Clearance, Statement of Result, and earlier clearance slips.',
       'Click "Submit for Clearance" to route to the Bursary Audit Officer for comprehensive fee audit.',
       'Once cleared, download your official Bursary Clearance Letter / Slip (PDF).',
     ],
@@ -118,7 +118,7 @@ const UI_STAGE_GUIDES = {
     time: '1 to 2 Working Days',
     instructions: [
       'Ensure Bursary and all preceding 9 clearance stages are approved.',
-      'Upload your Bursary Clearance Slip, Graduation Fee Receipt, all School Fee Receipts (100L to final year), Statement of Result photocopies, and earlier section clearance slips.',
+      'Upload your Bursary Clearance Slip, Graduation Fee Receipt, all School Fee Receipts (100L to final year), Statement of Result, and earlier section clearance slips.',
       'Click "Submit for Clearance" for final institutional verification by the Student Affairs Division.',
       'Upon final approval, your official University Final Clearance Letter is endorsed, qualifying you for NYSC mobilization and graduation clearance letter collection!',
     ],

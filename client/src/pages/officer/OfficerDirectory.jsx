@@ -96,7 +96,7 @@ export default function OfficerDirectory() {
               <option value="faculty">Faculty Clearance</option>
               <option value="library">Library Clearance</option>
               <option value="hall">Caution & Hall Clearance</option>
-              <option value="clinic">Jaja Clinic Clearance</option>
+              <option value="clinic">University Health Services Clearance</option>
               <option value="alumni">Alumni Clearance</option>
               <option value="sports">Sports Clearance</option>
               <option value="lodgings">Lodgings Clearance</option>
