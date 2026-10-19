@@ -39,17 +39,17 @@ export default function ForgotPassword() {
           </>
         ) : (
           <>
-            <p style={{ color: '#666' }}>Enter your account email and we'll send you a reset link.</p>
+            <p style={{ color: '#666' }}>Enter your institutional/contact email or matriculation number and we'll send you a reset link.</p>
             {error && <div className="error">{error}</div>}
             <form onSubmit={handleSubmit}>
               <div className="form-group">
-                <label>Email</label>
+                <label>Email Address or Matric Number</label>
                 <input
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="your.email@ui.edu.ng"
+                  placeholder="e.g. 230922 or your.email@ui.edu.ng"
                 />
               </div>
               <button type="submit" className="btn btn-primary" disabled={loading}>

@@ -175,7 +175,7 @@ CREATE TABLE IF NOT EXISTS notifications (
   user_id    INT NOT NULL,
   title      VARCHAR(150) NOT NULL,
   message    VARCHAR(500) NOT NULL,
-  channel    ENUM('in_app','sms','email') NOT NULL DEFAULT 'in_app',
+  channel    ENUM('in_app','sms','email','whatsapp') NOT NULL DEFAULT 'in_app',
   delivery_status ENUM('queued','sent','failed') NOT NULL DEFAULT 'queued',
   stage_id   INT DEFAULT NULL,
   read_at    TIMESTAMP NULL DEFAULT NULL,

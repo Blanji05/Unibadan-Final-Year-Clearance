@@ -6,7 +6,7 @@
  */
 const { query } = require('../config/db');
 
-const ALLOWED_CHANNELS = ['in_app', 'sms', 'email'];
+const ALLOWED_CHANNELS = ['in_app', 'sms', 'email', 'whatsapp'];
 
 /** Latest notifications for a user, with their unread count. */
 async function listForUser(userId, channel = 'in_app') {

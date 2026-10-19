@@ -162,6 +162,7 @@ const getProfile = asyncHandler(async (req, res) => {
 /** PUT /api/student/profile */
 const updateProfile = asyncHandler(async (req, res) => {
   const {
+    email,
     phone_number,
     dob,
     gender,
@@ -184,9 +185,19 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   // If registry records (dob, gender, session) already exist, preserve them from student overwrite
   const existing = await queryOne(
-    'SELECT dob, gender, graduation_session FROM users WHERE id = ?',
+    'SELECT email, dob, gender, graduation_session FROM users WHERE id = ?',
     [req.user.id]
   );
+
+  let finalEmail = existing?.email;
+  if (email && String(email).trim()) {
+    const cleanEmail = String(email).trim().toLowerCase();
+    const conflict = await queryOne('SELECT id FROM users WHERE LOWER(email) = ? AND id != ?', [cleanEmail, req.user.id]);
+    if (conflict) {
+      throw new ApiError('This email address is already in use by another account.', 400);
+    }
+    finalEmail = cleanEmail;
+  }
 
   const finalDob = existing?.dob || dob || null;
   const finalGender = existing?.gender || gender || null;
@@ -194,12 +205,13 @@ const updateProfile = asyncHandler(async (req, res) => {
 
   await query(
     `UPDATE users
-        SET phone_number = ?, dob = ?, gender = ?, blood_group = ?, genotype = ?,
+        SET email = ?, phone_number = ?, dob = ?, gender = ?, blood_group = ?, genotype = ?,
             next_of_kin_name = ?, next_of_kin_phone = ?, next_of_kin_address = ?,
             contact_address = ?, state_of_origin = ?, lga = ?,
             graduation_session = ?, degree_program = ?, hall = ?
       WHERE id = ?`,
     [
+      finalEmail,
       phone_number ?? null,
       finalDob,
       finalGender,

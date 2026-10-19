@@ -143,14 +143,16 @@ async function notifyUser({
   }
 
   if (phone) {
-    let deliveryStatus = 'sent';
+    const normalised = normalisePhone(phone);
 
+    // 1. SMS Dispatch (Termii generic channel)
+    let smsStatus = 'sent';
     if (config.termii.enabled) {
       try {
         await axios.post(
           TERMII_URL,
           {
-            to: normalisePhone(phone),
+            to: normalised,
             from: config.termii.senderId,
             sms: message,
             type: 'plain',
@@ -160,15 +162,39 @@ async function notifyUser({
           { timeout: 10000 }
         );
       } catch (error) {
-        deliveryStatus = 'failed';
-        console.warn('[sms] Termii send failed:', error.response?.data?.message || error.message);
+        smsStatus = 'failed';
+        console.warn('[sms] Termii SMS failed:', error.response?.data?.message || error.message);
       }
     } else {
-      // Simulated mode - visible in the server log so the flow is demonstrable.
       console.log(`[sms:simulated] -> ${phone}: ${message}`);
     }
+    await recordNotification(userId, 'sms', smsStatus, title, message, stageId);
 
-    await recordNotification(userId, 'sms', deliveryStatus, title, message, stageId);
+    // 2. WhatsApp Dispatch (Termii WhatsApp channel)
+    let waStatus = 'sent';
+    const waText = `*${title}*\n\n${message}\n\n*UI Online Clearance Portal:*\nhttps://unibadan-final-year-clearance.vercel.app`;
+    if (config.termii.enabled) {
+      try {
+        await axios.post(
+          TERMII_URL,
+          {
+            to: normalised,
+            from: config.termii.senderId,
+            sms: waText,
+            type: 'plain',
+            channel: 'whatsapp',
+            api_key: config.termii.apiKey,
+          },
+          { timeout: 10000 }
+        );
+      } catch (error) {
+        waStatus = 'failed';
+        console.warn('[whatsapp] Termii WhatsApp failed:', error.response?.data?.message || error.message);
+      }
+    } else {
+      console.log(`[whatsapp:simulated] -> ${phone}: ${message}`);
+    }
+    await recordNotification(userId, 'whatsapp', waStatus, title, message, stageId);
   }
 
   if (email) {
@@ -178,4 +204,12 @@ async function notifyUser({
   }
 }
 
-module.exports = { notifyUser, normalisePhone };
+function buildWhatsAppUrl(phone, title, message) {
+  const digits = normalisePhone(phone);
+  if (!digits) return null;
+  const text = `*${title}*\n\n${message}\n\nUI Clearance Portal: https://unibadan-final-year-clearance.vercel.app`;
+  return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
+}
+
+module.exports = { notifyUser, normalisePhone, buildWhatsAppUrl };
+

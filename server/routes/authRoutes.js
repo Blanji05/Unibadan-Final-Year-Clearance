@@ -34,7 +34,7 @@ router.post(
 
 router.post(
   '/forgot-password',
-  [body('email').isEmail().withMessage('A valid email is required.').normalizeEmail()],
+  [body('email').trim().notEmpty().withMessage('A valid email or matriculation number is required.')],
   validate,
   forgotPassword
 );

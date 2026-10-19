@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { notificationsApi } from '../services/api';
-import { IconBell } from './Icons';
+import { IconBell, IconWhatsApp } from './Icons';
 import { realtime } from '../services/realtime';
 
 /** How often the unread count refreshes while the page stays open (fallback). */
@@ -99,23 +99,59 @@ export default function NotificationBell() {
               )}
 
               {items.map((n) => (
-                <button
+                <div
                   key={n.id}
-                  type="button"
                   className={`notif-item${n.read_at ? '' : ' unread'}`}
                   onClick={() => !n.read_at && markOne(n.id)}
                   title={n.read_at ? undefined : 'Click to mark as read'}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => e.key === 'Enter' && !n.read_at && markOne(n.id)}
                 >
                   <span className="notif-item-title">
                     {!n.read_at && <span className="notif-dot" aria-hidden="true" />}
                     {n.title}
                   </span>
                   <span className="notif-item-msg">{n.message}</span>
-                  <span className="notif-item-time">
-                    {timeAgo(n.created_at)}
-                    {n.stage_name ? ` · ${n.stage_name}` : ''}
-                  </span>
-                </button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.35rem' }}>
+                    <span className="notif-item-time">
+                      {timeAgo(n.created_at)}
+                      {n.stage_name ? ` · ${n.stage_name}` : ''}
+                    </span>
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="notif-wa-pill"
+                      title="Open or share alert on WhatsApp"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const waUrl = `https://wa.me/?text=${encodeURIComponent(`*${n.title}*\n\n${n.message}\n\nUniversity of Ibadan Clearance Portal:\nhttps://unibadan-final-year-clearance.vercel.app`)}`;
+                        window.open(waUrl, '_blank', 'noopener,noreferrer');
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.stopPropagation();
+                          const waUrl = `https://wa.me/?text=${encodeURIComponent(`*${n.title}*\n\n${n.message}\n\nUniversity of Ibadan Clearance Portal:\nhttps://unibadan-final-year-clearance.vercel.app`)}`;
+                          window.open(waUrl, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        fontSize: '0.72rem',
+                        color: '#15803d',
+                        backgroundColor: '#dcfce7',
+                        padding: '2px 8px',
+                        borderRadius: '9999px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                      }}
+                    >
+                      <IconWhatsApp width={12} height={12} /> WhatsApp
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
           </div>

@@ -214,6 +214,10 @@ async function ensureSchemaAndSeed(force = false) {
       } catch (_) {}
     }
 
+    try {
+      await query("ALTER TABLE notifications MODIFY COLUMN channel ENUM('in_app','sms','email','whatsapp') NOT NULL DEFAULT 'in_app'");
+    } catch (_) {}
+
     // 5. Ensure auxiliary tables exist
     await query(`
       CREATE TABLE IF NOT EXISTS settings (

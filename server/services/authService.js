@@ -89,9 +89,14 @@ const sha256 = (value) => crypto.createHash('sha256').update(value).digest('hex'
  * Start a password reset. Always resolves the same way whether or not the email
  * belongs to an account, so the endpoint cannot be used to enumerate users.
  */
-async function requestPasswordReset(email, origin = null) {
-  const user = await queryOne('SELECT id, full_name, email, is_active FROM users WHERE email = ?', [email]);
-  if (!user || !user.is_active) return;
+async function requestPasswordReset(identifier, origin = null) {
+  if (!identifier) return;
+  const user = await queryOne(
+    `SELECT id, full_name, email, phone_number, is_active FROM users 
+      WHERE (LOWER(email) = LOWER(?) OR matric_number = ?) LIMIT 1`,
+    [identifier, identifier]
+  );
+  if (!user || !user.is_active || !user.email) return;
 
   // A request in the last minute is almost certainly a double-click or a script;
   // quietly ignore it instead of sending a second mail.
@@ -127,9 +132,8 @@ async function requestPasswordReset(email, origin = null) {
 
   const link = `${frontendUrl}/reset-password?token=${token}`;
 
-  // Without SMTP the mail is only logged, so surface the link in the server
-  // console (never in production) to keep the flow usable in demos.
-  if (!config.mail.enabled && config.nodeEnv !== 'production') {
+  // Log link in server console whenever SMTP is disabled so testers can always see it
+  if (!config.mail.enabled) {
     console.log(`[password-reset:simulated] ${user.email} -> ${link}`);
   }
 
@@ -174,6 +178,23 @@ async function requestPasswordReset(email, origin = null) {
       `If you did not request this reset, please ignore this email.\n`,
     html,
   });
+
+  // Also dispatch SMS & WhatsApp alerts if student has a registered phone number
+  if (user.phone_number) {
+    try {
+      const { notifyUser } = require('../utils/sendSMS');
+      await notifyUser({
+        userId: user.id,
+        phone: user.phone_number,
+        title: 'Password Reset Request',
+        message: `UI Clearance: Password reset requested for ${user.full_name}. Reset your password using this link (valid 60 mins): ${link}`,
+        actionUrl: link,
+        actionText: 'Reset Password',
+      });
+    } catch (err) {
+      console.warn('[password-reset] SMS/WhatsApp notification failed:', err.message);
+    }
+  }
 }
 
 /**

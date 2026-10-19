@@ -15,8 +15,9 @@ export default function Profile() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
-  // Editable non-compulsory fields form state
+  // Editable profile fields form state
   const [form, setForm] = useState({
+    email: '',
     phone_number: '',
     dob: '',
     gender: '',
@@ -48,6 +49,7 @@ export default function Profile() {
       setProgress(statusRes.progress || null);
 
       setForm({
+        email: u.email || '',
         phone_number: u.phone_number || '',
         dob: u.dob || '',
         gender: u.gender || '',
@@ -318,7 +320,16 @@ export default function Profile() {
           <form onSubmit={handleSaveProfile} className="form-stack">
             <div className="form-row">
               <div className="form-group">
-                <label>Phone Number (phone_number)</label>
+                <label>Email Address (For Notifications & Password Reset)</label>
+                <input
+                  type="email"
+                  placeholder="e.g. yourname@gmail.com"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                />
+              </div>
+              <div className="form-group">
+                <label>Phone Number (For SMS & WhatsApp Alerts)</label>
                 <input
                   type="text"
                   placeholder="e.g. 08012345678"
@@ -326,6 +337,9 @@ export default function Profile() {
                   onChange={(e) => setForm({ ...form, phone_number: e.target.value })}
                 />
               </div>
+            </div>
+
+            <div className="form-row">
               <div className="form-group">
                 <label>Hall of Residence * (hall_of_residence)</label>
                 <input
