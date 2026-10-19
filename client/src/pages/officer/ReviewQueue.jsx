@@ -15,6 +15,7 @@ import {
 import { EmptyState, SectionHeader, SkeletonList, StatCard, formatDate } from '../../components/Ui';
 import DocumentPreviewModal from '../../components/DocumentPreviewModal';
 import { getFaculties, getDepartmentsForFaculty } from '../../data/academicStructure';
+import { resolveFileUrl } from '../../utils/resolveUrl';
 
 /** Canned rejection reasons. Picking one fills the textarea, which stays editable. */
 const REJECTION_TEMPLATES = [
@@ -812,7 +813,7 @@ export default function ReviewQueue() {
                                   Preview
                                 </button>
                                 <a
-                                  href={doc.file_url}
+                                  href={resolveFileUrl(doc.file_url, doc.id)}
                                   target="_blank"
                                   rel="noreferrer"
                                   className="btn btn-secondary btn-sm"

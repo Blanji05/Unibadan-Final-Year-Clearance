@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { studentApi } from '../services/api';
 import CameraScannerModal from './CameraScannerModal';
 import { IconCamera, IconEye, IconRefresh, IconTrash, IconUpload } from './Icons';
+import { resolveFileUrl } from '../utils/resolveUrl';
 
 /**
  * Renders one row per document a stage requires, with complete real-time capability
@@ -147,7 +148,7 @@ export default function DocumentRequirements({ requirements = [], onChanged, rea
                           </span>
                           <div>
                             <a
-                              href={doc.file_url}
+                              href={resolveFileUrl(doc.file_url, doc.id)}
                               target="_blank"
                               rel="noreferrer"
                               style={{ fontWeight: 600, color: '#0369a1', textDecoration: 'none', wordBreak: 'break-all' }}
@@ -164,7 +165,7 @@ export default function DocumentRequirements({ requirements = [], onChanged, rea
                         {/* Real-Time Document Actions: Edit/Replace and Cancel/Remove */}
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                           <a
-                            href={doc.file_url}
+                            href={resolveFileUrl(doc.file_url, doc.id)}
                             target="_blank"
                             rel="noreferrer"
                             className="btn btn-secondary btn-sm"

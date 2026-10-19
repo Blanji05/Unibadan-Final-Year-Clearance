@@ -474,8 +474,20 @@ const updateOfficerProfile = asyncHandler(async (req, res) => {
 /** POST /api/officer/signature (multipart file upload) */
 const uploadOfficerSignature = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError('Please upload an image file of your official signature (PNG/JPG).', 400);
-  const { storeFile } = require('../config/cloudinary');
-  const { url } = await storeFile(req.file, `officer-sig-${req.user.id}`);
+  const { storeFile, isRemote } = require('../config/cloudinary');
+  let url;
+  if (isRemote()) {
+    const stored = await storeFile(req.file, `officer-sig-${req.user.id}`);
+    url = stored.url;
+  } else {
+    const mime = req.file.mimetype || 'image/png';
+    url = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+  }
+
+  try {
+    await query('ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT DEFAULT NULL');
+  } catch (_) {}
+
   await query('UPDATE users SET signature_url = ? WHERE id = ?', [url, req.user.id]);
   return sendSuccess(res, {
     signature_url: url,
@@ -489,21 +501,16 @@ const saveOfficerSignatureDrawing = asyncHandler(async (req, res) => {
   if (!signature_data || !signature_data.startsWith('data:image/')) {
     throw new ApiError('Valid signature drawing data is required.', 400);
   }
-  const fs = require('fs/promises');
-  const path = require('path');
-  const crypto = require('crypto');
-  const { UPLOAD_DIR } = require('../config/cloudinary');
 
-  const base64Data = signature_data.replace(/^data:image\/\w+;base64,/, '');
-  const buffer = Buffer.from(base64Data, 'base64');
-  await fs.mkdir(UPLOAD_DIR, { recursive: true });
-  const fileName = `sig-${req.user.id}-${Date.now()}-${crypto.randomBytes(4).toString('hex')}.png`;
-  await fs.writeFile(path.join(UPLOAD_DIR, fileName), buffer);
-  const url = `/uploads/${fileName}`;
+  try {
+    await query('ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT DEFAULT NULL');
+  } catch (_) {}
 
-  await query('UPDATE users SET signature_url = ? WHERE id = ?', [url, req.user.id]);
+  // Store data URI directly in MySQL users.signature_url (LONGTEXT).
+  // This guarantees it is 100% resilient across Render restarts, deploys, and local disk wipes.
+  await query('UPDATE users SET signature_url = ? WHERE id = ?', [signature_data, req.user.id]);
   return sendSuccess(res, {
-    signature_url: url,
+    signature_url: signature_data,
     message: 'Official digital signature saved successfully.',
   });
 });

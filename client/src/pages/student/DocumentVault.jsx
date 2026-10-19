@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { studentApi } from '../../services/api';
 import { realtime } from '../../services/realtime';
 import { IconFile, IconLock } from '../../components/Icons';
+import DocumentPreviewModal from '../../components/DocumentPreviewModal';
+import { resolveFileUrl } from '../../utils/resolveUrl';
 import {
   EmptyState,
   SectionHeader,
@@ -27,6 +29,7 @@ export default function DocumentVault() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [previewDoc, setPreviewDoc] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -162,16 +165,27 @@ export default function DocumentVault() {
                 {documents.map((doc) => (
                   <tr key={doc.id}>
                     <td>
-                      <a
-                        href={doc.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="file-link"
-                        title="Click to view file"
+                      <button
+                        type="button"
+                        onClick={() => setPreviewDoc(doc)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          padding: 0,
+                          textAlign: 'left',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          color: '#0f172a',
+                          fontWeight: '600',
+                          fontSize: '0.88rem',
+                        }}
+                        title="Click to preview document"
                       >
                         <IconFile width={16} height={16} />
-                        <strong>{doc.original_name || 'Document'}</strong>
-                      </a>
+                        <span>{doc.original_name || 'Document'}</span>
+                      </button>
                     </td>
                     <td>
                       <span className="req-tag">{doc.doc_label || 'General Document'}</span>
@@ -185,15 +199,15 @@ export default function DocumentVault() {
                     </td>
                     <td className="row-actions" style={{ textAlign: 'right' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => setPreviewDoc(doc)}
                           className="btn btn-secondary btn-sm"
-                          style={{ display: 'inline-flex', alignItems: 'center' }}
+                          style={{ display: 'inline-flex', alignItems: 'center', fontWeight: '600' }}
+                          title="Preview document"
                         >
                           View
-                        </a>
+                        </button>
                         <label
                           className="btn btn-secondary btn-sm"
                           style={{ display: 'inline-flex', alignItems: 'center', cursor: 'pointer', margin: 0 }}
@@ -230,6 +244,15 @@ export default function DocumentVault() {
           </div>
         )}
       </div>
+
+      {previewDoc && (
+        <DocumentPreviewModal
+          doc={previewDoc}
+          docs={documents}
+          onClose={() => setPreviewDoc(null)}
+          onSelectDoc={setPreviewDoc}
+        />
+      )}
     </div>
   );
 }

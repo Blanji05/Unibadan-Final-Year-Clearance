@@ -100,6 +100,49 @@ async function ensureSchemaAndSeed(force = false) {
          WHERE email = 'clinic.officer@ui.edu.ng' OR (role = 'officer' AND section_code = 'clinic')
       `);
       await query('ALTER TABLE users MODIFY COLUMN passport_url LONGTEXT DEFAULT NULL');
+
+      // Update KDL to Kenneth Dike Library everywhere in database
+      await query(`
+        UPDATE document_types 
+           SET label = 'Kenneth Dike Library ID Card', 
+               description = 'Kenneth Dike Library identification card' 
+         WHERE code = 'kdl_id_card' OR label LIKE '%KDL%'
+      `);
+      await query(`
+        UPDATE document_types 
+           SET label = REPLACE(label, 'KDL Library', 'Kenneth Dike Library'),
+               description = REPLACE(description, 'KDL Library', 'Kenneth Dike Library')
+         WHERE label LIKE '%KDL Library%' OR description LIKE '%KDL Library%'
+      `);
+      await query(`
+        UPDATE document_types 
+           SET label = REPLACE(label, 'KDL', 'Kenneth Dike Library'),
+               description = REPLACE(description, 'KDL', 'Kenneth Dike Library')
+         WHERE label LIKE '%KDL%' OR description LIKE '%KDL%'
+      `);
+      await query(`
+        UPDATE clearance_stages 
+           SET name = REPLACE(name, 'KDL Library', 'Kenneth Dike Library'),
+               description = REPLACE(description, 'KDL Library', 'Kenneth Dike Library')
+         WHERE name LIKE '%KDL Library%' OR description LIKE '%KDL Library%'
+      `);
+      await query(`
+        UPDATE clearance_stages 
+           SET name = REPLACE(name, 'KDL', 'Kenneth Dike Library'),
+               description = REPLACE(description, 'KDL', 'Kenneth Dike Library')
+         WHERE name LIKE '%KDL%' OR description LIKE '%KDL%'
+      `);
+
+      // Column expansions for signatures and document resilience
+      try {
+        await query('ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT DEFAULT NULL');
+      } catch (_) {}
+      try {
+        await query('ALTER TABLE documents MODIFY COLUMN file_url LONGTEXT NOT NULL');
+      } catch (_) {}
+      try {
+        await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL');
+      } catch (_) {}
     } catch (_) {}
 
     // Fast path: if schema and officers are already seeded, skip heavy startup processing

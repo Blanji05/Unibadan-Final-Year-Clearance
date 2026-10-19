@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { studentApi } from '../services/api';
 import { IconCheck, IconFile, IconUpload } from './Icons';
 import { EmptyState } from './Ui';
+import { resolveFileUrl } from '../utils/resolveUrl';
 
 /**
  * The student's cross-section upload checklist.
@@ -126,7 +127,7 @@ export default function RequirementChecklist({ requirements = [], onChanged }) {
                 <ul className="req-files">
                   {uploaded.map((doc) => (
                     <li key={doc.id}>
-                      <a href={doc.file_url} target="_blank" rel="noreferrer" className="file-link">
+                      <a href={resolveFileUrl(doc.file_url, doc.id)} target="_blank" rel="noreferrer" className="file-link">
                         <IconFile width={14} height={14} />
                         {doc.original_name}
                       </a>

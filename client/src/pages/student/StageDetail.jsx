@@ -24,11 +24,11 @@ import { EmptyState, SectionHeader, SkeletonList, StatusBadge, formatDate } from
  */
 const UI_STAGE_GUIDES = {
   1: {
-    title: 'Kenneth Dike Library (KDL) Clearance',
+    title: 'Kenneth Dike Library Clearance',
     time: 'Within 24 Hours',
     instructions: [
       'Ensure all borrowed library books are returned and any overdue accounts are settled.',
-      'Upload or snap a clear photo of your KDL Library ID Card in the required documents section below.',
+      'Upload or snap a clear photo of your Kenneth Dike Library ID Card in the required documents section below.',
       'Click "Submit for Clearance" to forward your records directly to the Library Clearance Officer.',
       'Once verified and approved, click "Download Clearance Slip (PDF)" to save your official stamped Library clearance slip.',
     ],

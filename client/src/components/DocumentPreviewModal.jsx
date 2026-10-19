@@ -1,14 +1,18 @@
+import { useState } from 'react';
 import { IconDownload, IconFile, IconX } from './Icons';
+import { resolveFileUrl } from '../utils/resolveUrl';
 
 /**
  * Document Preview Lightbox Modal
  *
- * Lets officers quickly preview student documents (receipts, certificates,
- * credentials, photos, and PDFs) inline without opening and closing multiple
- * browser tabs.
+ * Lets students and officers quickly preview uploaded documents (receipts,
+ * certificates, credentials, photos, and PDFs) inline without opening and
+ * closing multiple browser tabs.
  */
 export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelectDoc }) {
   if (!doc) return null;
+
+  const [imgError, setImgError] = useState(false);
 
   const currentIndex = docs.findIndex((d) => d.id === doc.id);
   const hasPrev = currentIndex > 0;
@@ -16,7 +20,10 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
 
   const isPdf =
     doc.file_url?.toLowerCase().endsWith('.pdf') ||
-    doc.original_name?.toLowerCase().endsWith('.pdf');
+    doc.original_name?.toLowerCase().endsWith('.pdf') ||
+    doc.mime_type === 'application/pdf';
+
+  const fileSrc = resolveFileUrl(doc.file_url, doc.id);
 
   return (
     <div
@@ -42,7 +49,7 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
 
           <div className="doc-preview-header-actions">
             <a
-              href={doc.file_url}
+              href={fileSrc}
               download={doc.original_name}
               target="_blank"
               rel="noreferrer"
@@ -66,17 +73,47 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
         <div className="doc-preview-body">
           {isPdf ? (
             <iframe
-              src={doc.file_url}
+              src={fileSrc}
               title={doc.original_name}
               className="doc-preview-iframe"
             />
-          ) : (
+          ) : !imgError ? (
             <div className="doc-preview-img-container">
               <img
-                src={doc.file_url}
+                src={fileSrc}
                 alt={doc.original_name}
                 className="doc-preview-image"
+                onError={() => setImgError(true)}
               />
+            </div>
+          ) : (
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '3rem 1.5rem',
+                color: '#cbd5e1',
+                textAlign: 'center',
+              }}
+            >
+              <IconFile width={48} height={48} />
+              <strong style={{ marginTop: '1rem', fontSize: '1.1rem', color: '#f8fafc' }}>
+                {doc.original_name || 'Clearance Document'}
+              </strong>
+              <p style={{ marginTop: '0.4rem', color: '#94a3b8', fontSize: '0.9rem', maxWidth: '400px' }}>
+                Document record is verified on the clearance database. Click below to view or download the original file.
+              </p>
+              <a
+                href={fileSrc}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-primary"
+                style={{ marginTop: '1rem' }}
+              >
+                <IconDownload width={16} height={16} /> Open Document File
+              </a>
             </div>
           )}
         </div>
@@ -87,7 +124,10 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
               type="button"
               className="btn btn-secondary btn-sm"
               disabled={!hasPrev}
-              onClick={() => onSelectDoc?.(docs[currentIndex - 1])}
+              onClick={() => {
+                setImgError(false);
+                onSelectDoc?.(docs[currentIndex - 1]);
+              }}
             >
               ← Previous Document
             </button>
@@ -98,7 +138,10 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
               type="button"
               className="btn btn-secondary btn-sm"
               disabled={!hasNext}
-              onClick={() => onSelectDoc?.(docs[currentIndex + 1])}
+              onClick={() => {
+                setImgError(false);
+                onSelectDoc?.(docs[currentIndex + 1]);
+              }}
             >
               Next Document →
             </button>
@@ -108,4 +151,3 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
     </div>
   );
 }
-

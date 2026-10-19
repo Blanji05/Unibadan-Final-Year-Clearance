@@ -3,6 +3,7 @@ import { officerApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconUpload, IconUser } from '../../components/Icons';
 import { SectionHeader, SkeletonList } from '../../components/Ui';
+import { resolveImageUrl } from '../../utils/resolveUrl';
 
 export default function OfficerProfile() {
   const { user } = useAuth();
@@ -308,7 +309,7 @@ export default function OfficerProfile() {
               }}
             >
               <img
-                src={officer.signature_url}
+                src={resolveImageUrl(officer.signature_url)}
                 alt="Officer Signature"
                 style={{ maxHeight: '65px', maxWidth: '240px', objectFit: 'contain' }}
               />

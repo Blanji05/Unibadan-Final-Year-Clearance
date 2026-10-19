@@ -15,9 +15,9 @@ async function uploadDocument(studentId, documentTypeId, file) {
   const { url, publicId } = await storeFile(file, studentId);
 
   const result = await query(
-    `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size]
+    `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size, file_data)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size, file.buffer]
   );
 
   try {
@@ -97,9 +97,9 @@ async function replaceDocument(studentId, documentId, file) {
 
   await query(
     `UPDATE documents
-     SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP
+     SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP, file_data = ?
      WHERE id = ?`,
-    [url, publicId, file.originalname, file.mimetype, file.size, documentId]
+    [url, publicId, file.originalname, file.mimetype, file.size, file.buffer, documentId]
   );
 
   const updatedDoc = await queryOne(
