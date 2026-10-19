@@ -22,3 +22,4 @@ export function resolveImageUrl(url) {
   const backendBase = (import.meta.env.VITE_API_URL || 'https://unibadan-final-year-clearance.onrender.com').replace(/\/api\/?$/, '');
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 }
+

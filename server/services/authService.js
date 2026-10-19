@@ -166,7 +166,15 @@ async function requestPasswordReset(identifier, origin = null) {
     </div>
   `;
 
-  await sendEmail({
+  // Fire-and-forget: never make the browser wait on SMTP/SMS providers.
+  console.log(`[password-reset] link for ${user.email}: ${link}`);
+  setImmediate(() => dispatchResetMessages(user, link, html).catch((err) =>
+    console.warn('[password-reset] background dispatch failed:', err.message)
+  ));
+}
+
+async function dispatchResetMessages(user, link, html) {
+  const outcome = await sendEmail({
     to: user.email,
     subject: 'University of Ibadan Clearance - Reset Your Password',
     text:
@@ -178,6 +186,7 @@ async function requestPasswordReset(identifier, origin = null) {
       `If you did not request this reset, please ignore this email.\n`,
     html,
   });
+  console.log(`[password-reset] email to ${user.email}: ${outcome.status}${outcome.error ? ' - ' + outcome.error : ''}`);
 
   // Also dispatch SMS & WhatsApp alerts if student has a registered phone number
   if (user.phone_number) {

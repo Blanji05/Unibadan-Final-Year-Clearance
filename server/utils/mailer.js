@@ -24,6 +24,9 @@ function getTransporter() {
           secure: config.mail.secure,
           auth: { user: config.mail.user, pass: config.mail.pass },
         };
+    transportConfig.connectionTimeout = 15000;
+    transportConfig.greetingTimeout = 15000;
+    transportConfig.socketTimeout = 20000;
     transporter = nodemailer.createTransport(transportConfig);
   }
   return transporter;
