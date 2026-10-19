@@ -12,8 +12,28 @@ const getClearanceStatus = asyncHandler(async (req, res) => {
   const stages = await clearanceService.getStudentClearanceStatus(req.user.id);
   const approvedCount = stages.filter((s) => s.status === 'approved').length;
 
+  const student = await queryOne(
+    'SELECT phone_number, email, hall, passport_url FROM users WHERE id = ?',
+    [req.user.id]
+  );
+  const missing = [];
+  if (!student?.phone_number || !String(student.phone_number).trim()) {
+    missing.push('Phone Number');
+  }
+  if (!student?.email || !String(student.email).trim()) {
+    missing.push('Email Address');
+  }
+  if (!student?.hall || !String(student.hall).trim()) {
+    missing.push('Hall of Residence');
+  }
+  if (!student?.passport_url) {
+    missing.push('Passport Photograph');
+  }
+
   return sendSuccess(res, {
     stages,
+    profile_complete: missing.length === 0,
+    missing_profile_fields: missing,
     progress: {
       approved: approvedCount,
       total: stages.length,
@@ -257,8 +277,20 @@ const updateProfile = asyncHandler(async (req, res) => {
 const uploadPassport = asyncHandler(async (req, res) => {
   if (!req.file) throw new ApiError('Please upload a passport photograph image (JPG/PNG).', 400);
 
-  const { storeFile } = require('../config/cloudinary');
-  const { url } = await storeFile(req.file, `passport-${req.user.id}`);
+  const { storeFile, isRemote } = require('../config/cloudinary');
+  let url;
+
+  if (isRemote()) {
+    const stored = await storeFile(req.file, `passport-${req.user.id}`);
+    url = stored.url;
+  } else {
+    // When cloud storage is not configured, encode as a high-availability Data URI
+    // stored directly in users.passport_url (MEDIUMTEXT) in MySQL.
+    // This guarantees it is permanently available across Vercel & Render, never gets wiped out on restart,
+    // and displays instantly in browser and PDF slips without 404 errors!
+    const mime = req.file.mimetype || 'image/jpeg';
+    url = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
+  }
 
   await query('UPDATE users SET passport_url = ? WHERE id = ?', [url, req.user.id]);
 

@@ -147,7 +147,7 @@ async function ensureSchemaAndSeed(force = false) {
 
     // 3. Ensure profile & slip columns exist on `users` table
     const userColumns = [
-      { name: 'passport_url', type: 'VARCHAR(500) DEFAULT NULL' },
+      { name: 'passport_url', type: 'MEDIUMTEXT DEFAULT NULL' },
       { name: 'signature_url', type: 'VARCHAR(500) DEFAULT NULL' },
       { name: 'title', type: 'VARCHAR(100) DEFAULT NULL' },
       { name: 'dob', type: 'VARCHAR(20) DEFAULT NULL' },
@@ -176,6 +176,10 @@ async function ensureSchemaAndSeed(force = false) {
         }
       } catch (_) {}
     }
+
+    try {
+      await query('ALTER TABLE users MODIFY COLUMN passport_url MEDIUMTEXT DEFAULT NULL');
+    } catch (_) {}
 
     // 4. Ensure slip snapshot columns exist on `clearance_status`
     const statusColumns = [

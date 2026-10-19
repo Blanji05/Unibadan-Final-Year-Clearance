@@ -146,6 +146,7 @@ export default function StageDetail() {
   const [formResponses, setFormResponses] = useState({});
   const [savingForm, setSavingForm] = useState(false);
   const [formSavedNotice, setFormSavedNotice] = useState('');
+  const [profileStatus, setProfileStatus] = useState({ complete: true, missing: [] });
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
 
@@ -160,6 +161,10 @@ export default function StageDetail() {
         studentApi.stageForm(targetId).catch(() => []),
       ]);
       setStages(status.stages || []);
+      setProfileStatus({
+        complete: status.profile_complete !== false,
+        missing: status.missing_profile_fields || [],
+      });
       setDocStages(docs || []);
       setPayments(pays || []);
       setFormFields(fields || []);
@@ -298,6 +303,11 @@ export default function StageDetail() {
     setError('');
     setNotice('');
 
+    if (!profileStatus.complete) {
+      setError(`Mandatory Profile Incomplete: You must complete your Student Profile (${profileStatus.missing.join(', ')}) before you can submit clearance. This ensures automatic SMS, WhatsApp, and Email alerts.`);
+      return;
+    }
+
     if (locked) {
       setError('Sequential Order Enforced: You cannot submit this clearance until all prerequisite stages are approved.');
       return;
@@ -383,6 +393,29 @@ export default function StageDetail() {
 
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
+
+      {!profileStatus.complete && (
+        <div className="notice notice-warn" style={{ borderLeft: '4px solid #f59e0b', backgroundColor: '#fffbeb', padding: '1.25rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <strong style={{ fontSize: '1rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>⚠️</span> Mandatory Action: Complete Your Profile Before Submitting Clearance
+              </strong>
+              <p style={{ margin: '0.35rem 0 0', color: '#78350f', fontSize: '0.88rem', lineHeight: 1.5 }}>
+                To enable automatic <strong>SMS</strong>, <strong>WhatsApp</strong>, and <strong>Email</strong> clearance alerts and generate your verified clearance slips, you must complete your contact profile and upload your passport photograph.
+              </p>
+              {profileStatus.missing.length > 0 && (
+                <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#b45309' }}>
+                  Required: <strong>{profileStatus.missing.join(', ')}</strong>
+                </div>
+              )}
+            </div>
+            <Link to="/student/profile" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              Complete Profile Now &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {/* Stage Header Banner */}
       <div className="card stage-detail-header-card">

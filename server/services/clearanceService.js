@@ -260,6 +260,31 @@ async function assertCanSubmitStage(studentId, stageId) {
     throw new ApiError('This stage has already been approved.', 400);
   }
 
+  // Mandatory Student Profile Completion Check
+  const student = await queryOne(
+    'SELECT phone_number, email, hall, passport_url FROM users WHERE id = ?',
+    [studentId]
+  );
+  const missingProfile = [];
+  if (!student?.phone_number || !String(student.phone_number).trim()) {
+    missingProfile.push('Phone Number (required for SMS & WhatsApp notifications)');
+  }
+  if (!student?.email || !String(student.email).trim()) {
+    missingProfile.push('Email Address');
+  }
+  if (!student?.hall || !String(student.hall).trim()) {
+    missingProfile.push('Hall of Residence');
+  }
+  if (!student?.passport_url) {
+    missingProfile.push('Passport Photograph');
+  }
+  if (missingProfile.length > 0) {
+    throw new ApiError(
+      `Mandatory Profile Required: You must complete your Student Profile (${missingProfile.join(', ')}) before submitting clearance stages. Please complete your profile first.`,
+      400
+    );
+  }
+
   // Prerequisite check
   const prereqs = await query('SELECT prerequisite_stage_id FROM stage_prerequisites WHERE stage_id = ?', [stageId]);
   if (prereqs.length) {

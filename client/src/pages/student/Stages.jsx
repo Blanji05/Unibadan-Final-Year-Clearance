@@ -29,6 +29,7 @@ export default function Stages() {
   const [busy, setBusy] = useState(false);
   const [payingStageId, setPayingStageId] = useState(null);
   const [downloadingSlipId, setDownloadingSlipId] = useState(null);
+  const [profileStatus, setProfileStatus] = useState({ complete: true, missing: [] });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -40,6 +41,10 @@ export default function Stages() {
       studentApi.documentsByStage(),
     ]);
     setStages(status.stages || []);
+    setProfileStatus({
+      complete: status.profile_complete !== false,
+      missing: status.missing_profile_fields || [],
+    });
     setPayments(pays || []);
     setDocStages(docs || []);
   }, []);
@@ -134,6 +139,29 @@ export default function Stages() {
     <div className="stack">
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
+
+      {!profileStatus.complete && (
+        <div className="notice notice-warn" style={{ borderLeft: '4px solid #f59e0b', backgroundColor: '#fffbeb', padding: '1.25rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <strong style={{ fontSize: '1rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>⚠️</span> Mandatory Action: Complete Your Profile Before Starting Clearance
+              </strong>
+              <p style={{ margin: '0.35rem 0 0', color: '#78350f', fontSize: '0.88rem', lineHeight: 1.5 }}>
+                To enable automatic <strong>SMS</strong>, <strong>WhatsApp</strong>, and <strong>Email</strong> clearance alerts and generate your verified clearance slips, you must complete your contact profile and upload your passport photograph.
+              </p>
+              {profileStatus.missing.length > 0 && (
+                <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#b45309' }}>
+                  Required: <strong>{profileStatus.missing.join(', ')}</strong>
+                </div>
+              )}
+            </div>
+            <Link to="/student/profile" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              Complete Profile Now &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         <SectionHeader

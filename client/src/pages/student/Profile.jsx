@@ -3,6 +3,14 @@ import { studentApi } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { IconCheck, IconLock, IconUpload, IconUser } from '../../components/Icons';
 import { ProgressBar, SectionHeader, SkeletonList } from '../../components/Ui';
+function resolveImageUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const backendBase = (import.meta.env.VITE_API_URL || 'https://unibadan-final-year-clearance.onrender.com').replace(/\/api\/?$/, '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+}
 
 export default function Profile() {
   const { user: authUser } = useAuth();
@@ -148,17 +156,21 @@ export default function Profile() {
       {error && <div className="error">{error}</div>}
       {notice && <div className="notice">{notice}</div>}
 
-      {/* Mandatory Passport Photograph Warning / Header Card */}
-      {!hasPassport && (
-        <div className="notice notice-warn" style={{ borderLeft: '4px solid #f59e0b' }}>
+      {/* Mandatory Profile Details Warning Header */}
+      {(!hasPassport || !user?.phone_number || !user?.hall) && (
+        <div className="notice notice-warn" style={{ borderLeft: '4px solid #f59e0b', backgroundColor: '#fffbeb', padding: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+            <span style={{ fontSize: '1.35rem' }}>⚠️</span>
             <div>
-              <strong>Profile Passport Photograph Required!</strong>
-              <p style={{ marginTop: '0.25rem', fontSize: '0.9rem' }}>
-                You are required to upload a clear passport photograph. This photograph will appear on all your official
-                section clearance slips and your University of Ibadan Final Clearance Letter.
+              <strong style={{ fontSize: '0.98rem', color: '#92400e' }}>Mandatory Profile Details Required Before Clearance</strong>
+              <p style={{ marginTop: '0.25rem', fontSize: '0.88rem', color: '#78350f', lineHeight: 1.5 }}>
+                To enable automatic <strong>SMS</strong>, <strong>WhatsApp</strong>, and <strong>Email</strong> notifications and generate your official clearance slips, you must complete your contact profile and upload your passport photograph below before submitting any clearance stages.
               </p>
+              <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.2rem', fontSize: '0.85rem', color: '#78350f' }}>
+                {!user?.phone_number && <li><strong>Phone Number</strong> (Required for instant SMS & WhatsApp alerts)</li>}
+                {!user?.hall && <li><strong>Hall of Residence</strong> (Required for Hall and Caution Clearance)</li>}
+                {!hasPassport && <li><strong>Passport Photograph</strong> (Required for official slips and letter)</li>}
+              </ul>
             </div>
           </div>
         </div>
@@ -184,18 +196,33 @@ export default function Profile() {
                 boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
               }}
             >
-              {hasPassport ? (
+              {hasPassport && resolveImageUrl(user?.passport_url) ? (
                 <img
-                  src={user.passport_url}
+                  src={resolveImageUrl(user.passport_url)}
                   alt="Student Passport"
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const parent = e.currentTarget.parentElement;
+                    if (parent) {
+                      const placeholder = parent.querySelector('.photo-fallback');
+                      if (placeholder) placeholder.style.display = 'block';
+                    }
+                  }}
                 />
-              ) : (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '0.5rem' }}>
-                  <IconUser width={36} height={36} />
-                  <div style={{ fontSize: '0.7rem', fontWeight: '600', marginTop: '0.25rem' }}>No Photo</div>
-                </div>
-              )}
+              ) : null}
+              <div
+                className="photo-fallback"
+                style={{
+                  textAlign: 'center',
+                  color: '#94a3b8',
+                  padding: '0.5rem',
+                  display: hasPassport && resolveImageUrl(user?.passport_url) ? 'none' : 'block',
+                }}
+              >
+                <IconUser width={36} height={36} />
+                <div style={{ fontSize: '0.7rem', fontWeight: '600', marginTop: '0.25rem' }}>No Photo</div>
+              </div>
             </div>
 
             <input

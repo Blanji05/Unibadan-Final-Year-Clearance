@@ -29,6 +29,7 @@ export default function Overview() {
   const { user } = useAuth();
   const [stages, setStages] = useState([]);
   const [progress, setProgress] = useState(null);
+  const [profileStatus, setProfileStatus] = useState({ complete: true, missing: [] });
   const [docStages, setDocStages] = useState([]);
   const [timeline, setTimeline] = useState({ deadline: null, reminders: [], events: [] });
   const [loading, setLoading] = useState(true);
@@ -42,6 +43,10 @@ export default function Overview() {
       ]);
       setStages(status.stages || []);
       setProgress(status.progress || null);
+      setProfileStatus({
+        complete: status.profile_complete !== false,
+        missing: status.missing_profile_fields || [],
+      });
       setDocStages(docs || []);
       // The timeline is a nicety: if it fails the rest of the page still works.
       try {
@@ -127,11 +132,34 @@ export default function Overview() {
             <IconAward width={16} height={16} /> Download letter
           </Link>
         ) : (
-          <Link to="/student/stages" className="btn btn-light">
-            Continue clearance
+          <Link to={profileStatus.complete ? '/student/stages' : '/student/profile'} className="btn btn-light">
+            {profileStatus.complete ? 'Continue clearance' : 'Complete Profile First'}
           </Link>
         )}
       </div>
+
+      {!profileStatus.complete && (
+        <div className="notice notice-warn" style={{ borderLeft: '4px solid #f59e0b', backgroundColor: '#fffbeb', padding: '1.25rem', borderRadius: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <strong style={{ fontSize: '1rem', color: '#92400e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span>⚠️</span> Mandatory Action: Complete Your Profile Before Starting Clearance
+              </strong>
+              <p style={{ margin: '0.35rem 0 0', color: '#78350f', fontSize: '0.88rem', lineHeight: 1.5 }}>
+                To enable automatic <strong>SMS</strong>, <strong>WhatsApp</strong>, and <strong>Email</strong> clearance notifications and generate your verified clearance slips, you must complete your contact profile and upload your passport photograph.
+              </p>
+              {profileStatus.missing.length > 0 && (
+                <div style={{ marginTop: '0.4rem', fontSize: '0.82rem', color: '#b45309' }}>
+                  Required: <strong>{profileStatus.missing.join(', ')}</strong>
+                </div>
+              )}
+            </div>
+            <Link to="/student/profile" className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>
+              Complete Profile Now &rarr;
+            </Link>
+          </div>
+        </div>
+      )}
 
       {timeline.reminders.length > 0 && (
         <div className="reminder-list" role="status">
