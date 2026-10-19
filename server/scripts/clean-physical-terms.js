@@ -89,3 +89,4 @@ run().catch((err) => {
   console.error('[migration] Error:', err);
   process.exit(1);
 });
+
