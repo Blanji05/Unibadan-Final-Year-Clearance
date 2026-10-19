@@ -12,8 +12,64 @@ function resolveImageUrl(url) {
   return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
 }
 
+function resizePassportImage(file, maxWidth = 320, maxHeight = 400, quality = 0.85) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxWidth) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          }
+        } else {
+          if (height > maxHeight) {
+            width = Math.round((width * maxHeight) / height);
+            height = maxHeight;
+          }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob) {
+              const resized = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(resized);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
+/** First letter of surname + first letter of first name, e.g. "Osunlana Anjoolaoluwa Victor" -> "OA". */
+function getStudentInitials(name = '') {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'UI';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
 export default function Profile() {
-  const { user: authUser } = useAuth();
+  const { user: authUser, updateUser } = useAuth();
   const [profile, setProfile] = useState(null);
   const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -102,12 +158,16 @@ export default function Profile() {
       setUploadingPassport(true);
       setError('');
       setNotice('');
+
+      // Auto-compress and resize image to prevent oversized payloads / column overflow
+      const optimized = await resizePassportImage(file);
       const formData = new FormData();
-      formData.append('passport', file);
+      formData.append('passport', optimized);
 
       const res = await studentApi.uploadPassport(formData);
       setNotice(res.message || 'Passport photograph uploaded successfully.');
       setProfile((prev) => ({ ...prev, passport_url: res.passport_url }));
+      if (updateUser) updateUser({ passport_url: res.passport_url });
     } catch (err) {
       setError(err.message || 'Failed to upload passport photo.');
     } finally {
@@ -130,6 +190,7 @@ export default function Profile() {
       const res = await studentApi.updateProfile(form);
       setNotice(res.message || 'Profile updated successfully.');
       setProfile(res.user);
+      if (updateUser) updateUser(res.user);
       setIsEditing(false);
     } catch (err) {
       setError(err.message || 'Failed to update profile.');
@@ -178,22 +239,22 @@ export default function Profile() {
 
       {/* Passport & Identity Header Card */}
       <div className="card">
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'flex-start' }}>
           {/* Passport Photo Frame */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', minWidth: '120px' }}>
             <div
               style={{
-                width: '110px',
-                height: '130px',
-                borderRadius: '6px',
+                width: '120px',
+                height: '145px',
+                borderRadius: '8px',
                 border: '2px solid #cbd5e1',
-                backgroundColor: '#f8fafc',
+                backgroundColor: '#0f172a',
                 overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 position: 'relative',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.06)',
+                boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
               }}
             >
               {hasPassport && resolveImageUrl(user?.passport_url) ? (
@@ -206,7 +267,7 @@ export default function Profile() {
                     const parent = e.currentTarget.parentElement;
                     if (parent) {
                       const placeholder = parent.querySelector('.photo-fallback');
-                      if (placeholder) placeholder.style.display = 'block';
+                      if (placeholder) placeholder.style.display = 'flex';
                     }
                   }}
                 />
@@ -214,14 +275,24 @@ export default function Profile() {
               <div
                 className="photo-fallback"
                 style={{
+                  display: hasPassport && resolveImageUrl(user?.passport_url) ? 'none' : 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '100%',
+                  height: '100%',
+                  backgroundColor: '#0f172a',
+                  color: '#ffffff',
                   textAlign: 'center',
-                  color: '#94a3b8',
                   padding: '0.5rem',
-                  display: hasPassport && resolveImageUrl(user?.passport_url) ? 'none' : 'block',
                 }}
               >
-                <IconUser width={36} height={36} />
-                <div style={{ fontSize: '0.7rem', fontWeight: '600', marginTop: '0.25rem' }}>No Photo</div>
+                <span style={{ fontSize: '1.9rem', fontWeight: '800', letterSpacing: '1px', lineHeight: 1 }}>
+                  {getStudentInitials(user?.full_name)}
+                </span>
+                <span style={{ fontSize: '0.68rem', color: '#94a3b8', marginTop: '0.35rem', fontWeight: '500' }}>
+                  No Photo
+                </span>
               </div>
             </div>
 
@@ -238,15 +309,15 @@ export default function Profile() {
               className="btn btn-secondary btn-sm"
               onClick={() => fileInputRef.current?.click()}
               disabled={uploadingPassport}
-              style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+              style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', width: '100%' }}
             >
               <IconUpload width={13} height={13} />
-              {uploadingPassport ? 'Uploading…' : hasPassport ? 'Change Passport' : 'Upload Passport'}
+              {uploadingPassport ? 'Uploading…' : hasPassport ? 'Change Photo' : 'Upload Passport'}
             </button>
           </div>
 
-          {/* Student Banner Info */}
-          <div style={{ flex: 1, minWidth: '220px' }}>
+          {/* Student Banner Info & Guidelines */}
+          <div style={{ flex: 1, minWidth: '260px' }}>
             <h2 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>{user?.full_name}</h2>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', margin: '0.4rem 0' }}>
               <span className="badge badge-primary">Matric: {user?.matric_number}</span>
@@ -260,6 +331,30 @@ export default function Profile() {
             <p style={{ margin: '0.25rem 0 0', fontSize: '0.88rem', color: '#64748b' }}>
               University of Ibadan Official Graduating Clearance Profile
             </p>
+
+            {/* Passport Photograph Guidelines Box */}
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.85rem 1rem',
+                borderRadius: '8px',
+                backgroundColor: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                fontSize: '0.84rem',
+              }}
+            >
+              <div style={{ fontWeight: '700', color: '#1e293b', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                <span>📷</span>
+                <span>Passport Photograph Specifications &amp; Requirements</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '1.2rem', color: '#475569', lineHeight: 1.6 }}>
+                <li><strong>Background:</strong> Plain white or light off-white background with clear contrast.</li>
+                <li><strong>Framing &amp; Pose:</strong> Direct front-facing headshot showing the entire face and ears clearly. No tilted angles.</li>
+                <li><strong>Dress &amp; Appearance:</strong> Formal or decent attire. No caps, hats, dark sunglasses, or face-covering scarves.</li>
+                <li><strong>Format &amp; Size:</strong> JPG, JPEG, PNG, or WEBP up to 5MB (automatically optimized upon upload).</li>
+                <li><strong>Official Validity:</strong> This photograph is permanently embedded on your <em>Final Clearance Certificate</em>, <em>Registry Archive</em>, and <em>Graduation Clearance Slips</em>.</li>
+              </ul>
+            </div>
           </div>
         </div>
       </div>

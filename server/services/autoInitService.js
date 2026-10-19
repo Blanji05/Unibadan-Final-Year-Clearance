@@ -99,6 +99,7 @@ async function ensureSchemaAndSeed(force = false) {
            SET full_name = 'University Health Services Officer' 
          WHERE email = 'clinic.officer@ui.edu.ng' OR (role = 'officer' AND section_code = 'clinic')
       `);
+      await query('ALTER TABLE users MODIFY COLUMN passport_url LONGTEXT DEFAULT NULL');
     } catch (_) {}
 
     // Fast path: if schema and officers are already seeded, skip heavy startup processing

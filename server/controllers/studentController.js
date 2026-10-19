@@ -292,6 +292,10 @@ const uploadPassport = asyncHandler(async (req, res) => {
     url = `data:${mime};base64,${req.file.buffer.toString('base64')}`;
   }
 
+  try {
+    await query('ALTER TABLE users MODIFY COLUMN passport_url LONGTEXT DEFAULT NULL');
+  } catch (_) {}
+
   await query('UPDATE users SET passport_url = ? WHERE id = ?', [url, req.user.id]);
 
   // Synchronize changes to master CSV file immediately

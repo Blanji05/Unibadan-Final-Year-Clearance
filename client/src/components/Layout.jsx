@@ -98,14 +98,74 @@ const NAV = {
   ],
 };
 
-/** Initials for the avatar, e.g. "Osunlana Anjoolaoluwa" -> "OA". */
-function initials(name = '') {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('');
+function resolveImageUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('data:') || url.startsWith('http://') || url.startsWith('https://')) {
+    return url;
+  }
+  const backendBase = (import.meta.env.VITE_API_URL || 'https://unibadan-final-year-clearance.onrender.com').replace(/\/api\/?$/, '');
+  return `${backendBase}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
+/** First letter of surname + first letter of first name, e.g. "Osunlana Anjoolaoluwa Victor" -> "OA". */
+function getStudentInitials(name = '') {
+  const parts = String(name).trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return 'UI';
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+}
+
+function UserAvatar({ user, size = 'md', onClick }) {
+  const [imgFailed, setImgFailed] = useState(false);
+  const passportSrc = resolveImageUrl(user?.passport_url);
+  const initialsText = getStudentInitials(user?.full_name);
+  const isSmall = size === 'sm';
+
+  useEffect(() => {
+    setImgFailed(false);
+  }, [user?.passport_url]);
+
+  const avatarStyle = {
+    width: isSmall ? '32px' : '38px',
+    height: isSmall ? '32px' : '38px',
+    borderRadius: '50%',
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0f172a',
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: isSmall ? '0.75rem' : '0.85rem',
+    letterSpacing: '0.5px',
+    flexShrink: 0,
+    cursor: onClick ? 'pointer' : 'default',
+    border: '2px solid rgba(255,255,255,0.15)',
+    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    padding: 0,
+  };
+
+  return (
+    <button
+      type="button"
+      className={`avatar ${isSmall ? 'avatar-sm' : ''} avatar-btn`}
+      style={avatarStyle}
+      onClick={onClick}
+      title={user?.full_name || 'Your Profile'}
+      aria-label="Your profile"
+    >
+      {passportSrc && !imgFailed ? (
+        <img
+          src={passportSrc}
+          alt={user?.full_name || 'Student'}
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          onError={() => setImgFailed(true)}
+        />
+      ) : (
+        <span>{initialsText}</span>
+      )}
+    </button>
+  );
 }
 
 const ROLE_LABEL = {
@@ -173,24 +233,7 @@ export default function Layout() {
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
-            <button
-              className="avatar avatar-btn"
-              onClick={openProfile}
-              type="button"
-              aria-label="Your profile"
-              title="Your profile"
-              style={{ overflow: 'hidden', padding: 0 }}
-            >
-              {user?.passport_url ? (
-                <img
-                  src={user.passport_url}
-                  alt={user.full_name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                initials(user?.full_name)
-              )}
-            </button>
+            <UserAvatar user={user} size="md" onClick={openProfile} />
             <div className="sidebar-user-meta">
               <strong>{user?.full_name}</strong>
               <span style={{ fontSize: '0.75rem', lineHeight: '1.2' }}>
@@ -253,24 +296,7 @@ export default function Layout() {
 
           <div className="topbar-user">
             <NotificationBell />
-            <button
-              className="avatar avatar-sm avatar-btn"
-              onClick={openProfile}
-              type="button"
-              aria-label="Your profile"
-              title="Your profile"
-              style={{ overflow: 'hidden', padding: 0 }}
-            >
-              {user?.passport_url ? (
-                <img
-                  src={user.passport_url}
-                  alt={user.full_name}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-              ) : (
-                initials(user?.full_name)
-              )}
-            </button>
+            <UserAvatar user={user} size="sm" onClick={openProfile} />
           </div>
         </header>
 
@@ -326,17 +352,7 @@ export default function Layout() {
 
             <div className="drawer-footer">
               <div className="sidebar-user">
-                <div className="avatar" style={{ overflow: 'hidden', padding: 0 }}>
-                  {user?.passport_url ? (
-                    <img
-                      src={user.passport_url}
-                      alt={user.full_name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  ) : (
-                    initials(user?.full_name)
-                  )}
-                </div>
+                <UserAvatar user={user} size="md" onClick={openProfile} />
                 <div className="sidebar-user-meta">
                   <strong>{user?.full_name}</strong>
                   <span>{ROLE_LABEL[user?.role] || user?.role}</span>
