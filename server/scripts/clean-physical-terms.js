@@ -25,8 +25,13 @@ async function run() {
 
   await query(`
     UPDATE clearance_stages 
-       SET description = 'First clearance stage. Online verification by Kenneth Dike Library (KDL). Upload your Library ID Card and ensure all library accounts are in good standing.' 
+       SET description = '' 
      WHERE code = 'library'
+  `);
+  await query(`
+    UPDATE clearance_stages 
+       SET description = REPLACE(description, 'KDL Library Clearance', 'Kenneth Dike Library Clearance') 
+     WHERE code = 'faculty'
   `);
 
   await query(`

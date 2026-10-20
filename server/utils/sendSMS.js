@@ -156,40 +156,44 @@ async function notifyUser({
   if (phone) {
     const normalised = normalisePhone(phone);
 
-    // 1. SMS Dispatch with pre-approved sender ID fallbacks
+    // 1. SMS Dispatch with pre-approved sender ID fallbacks and DND/generic route fallbacks
     let smsStatus = 'sent';
     if (config.termii.enabled) {
       const senders = [config.termii.senderId, 'N-Alert', 'Termii', 'Alert'].filter(Boolean);
       const uniqueSenders = [...new Set(senders)];
       let sentOk = false;
 
-      for (const sender of uniqueSenders) {
-        try {
-          const res = await axios.post(
-            TERMII_URL,
-            {
-              to: normalised,
-              from: sender,
-              sms: message,
-              type: 'plain',
-              channel: 'generic',
-              api_key: config.termii.apiKey,
-            },
-            { timeout: 10000 }
-          );
-          if (res.status === 200) {
-            console.log(`[sms:sent] -> ${phone} via Termii (sender: ${sender})`);
-            sentOk = true;
+      // Try 'dnd' priority route first, then 'generic'
+      for (const channelType of ['dnd', 'generic']) {
+        if (sentOk) break;
+        for (const sender of uniqueSenders) {
+          try {
+            const res = await axios.post(
+              TERMII_URL,
+              {
+                to: normalised,
+                from: sender,
+                sms: message,
+                type: 'plain',
+                channel: channelType,
+                api_key: config.termii.apiKey,
+              },
+              { timeout: 10000 }
+            );
+            if (res.status === 200) {
+              console.log(`[sms:sent] -> ${phone} via Termii (${channelType}, sender: ${sender})`);
+              sentOk = true;
+              break;
+            }
+          } catch (error) {
+            const errMsg = error.response?.data?.message || error.message;
+            if (errMsg && (errMsg.includes('SENDER_ID_NOT_APPROVED') || errMsg.includes('Sender id is not valid'))) {
+              console.warn(`[sms] Sender ID '${sender}' not approved on Termii workspace. Retrying next sender...`);
+              continue;
+            }
+            console.warn(`[sms] Termii error (${channelType}, sender: ${sender}):`, errMsg);
             break;
           }
-        } catch (error) {
-          const errMsg = error.response?.data?.message || error.message;
-          if (errMsg && errMsg.includes('SENDER_ID_NOT_APPROVED')) {
-            console.warn(`[sms] Sender ID '${sender}' not approved on Termii workspace. Retrying with pre-approved sender...`);
-            continue;
-          }
-          console.warn(`[sms] Termii error with sender '${sender}':`, errMsg);
-          break;
         }
       }
       if (!sentOk) smsStatus = 'failed';
