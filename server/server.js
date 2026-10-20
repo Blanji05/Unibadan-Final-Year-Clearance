@@ -193,20 +193,41 @@ app.get('/api/termii-test', async (req, res) => {
   }
 
   if (req.query.requestSender === 'true') {
-    try {
-      const reqRes = await axios.post(
-        'https://api.ng.termii.com/api/sender-id/request',
-        {
-          api_key: rawKey,
-          sender_id: req.query.requestedId || 'UICLEAR',
-          usecase: 'Student final year clearance status and approval notifications',
-          company: 'University of Ibadan',
-        },
-        { timeout: 10000 }
-      );
-      diagnostic.requestSenderResult = reqRes.data;
-    } catch (err) {
-      diagnostic.requestSenderResult = { error: err.response?.data || err.message, status: err.response?.status };
+    const payloads = [
+      {
+        api_key: rawKey,
+        sender_id: req.query.requestedId || 'UICLEAR',
+        usecase: 'Student final year clearance status and approval notifications',
+        company: 'University of Ibadan',
+        country: 'Nigeria',
+      },
+      {
+        api_key: rawKey,
+        sender_id: req.query.requestedId || 'UICLEAR',
+        usecase: 'Student final year clearance status and approval notifications',
+        company: 'University of Ibadan',
+        countries: ['Nigeria'],
+      },
+      {
+        api_key: rawKey,
+        sender_id: req.query.requestedId || 'UICLEAR',
+        usecase: 'Student final year clearance status and approval notifications',
+        company: 'University of Ibadan',
+        country: 'NG',
+      },
+    ];
+
+    diagnostic.requestSenderResults = [];
+    for (const p of payloads) {
+      try {
+        const reqRes = await axios.post('https://api.ng.termii.com/api/sender-id/request', p, { timeout: 10000 });
+        diagnostic.requestSenderResults.push({ payload: p, res: reqRes.data });
+        if (reqRes.data?.status === 'PENDING' || reqRes.data?.status === 'SUCCESS' || reqRes.data?.code === 'ok') {
+          break;
+        }
+      } catch (err) {
+        diagnostic.requestSenderResults.push({ payload: p, error: err.response?.data || err.message });
+      }
     }
   }
 
