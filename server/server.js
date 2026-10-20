@@ -152,6 +152,65 @@ app.get('/api/system/init-db', async (req, res) => {
   res.json(result);
 });
 
+app.get('/api/termii-test', async (req, res) => {
+  const axios = require('axios');
+  const rawKey = String(config.termii.apiKey || '').trim();
+  const phone = req.query.phone || '08089291233';
+  const { normalisePhone } = require('./utils/sendSMS');
+  const normalised = normalisePhone(phone);
+
+  const diagnostic = {
+    configured: Boolean(rawKey),
+    keyPrefix: rawKey.slice(0, 4),
+    keyLength: rawKey.length,
+    senderId: config.termii.senderId,
+    targetPhone: normalised,
+    balanceCheck: null,
+    senderIdCheck: null,
+    testSmsResult: null,
+  };
+
+  if (!rawKey) {
+    return res.json({ success: false, message: 'TERMII_API_KEY is not set in environment.', diagnostic });
+  }
+
+  try {
+    const balRes = await axios.get(`https://api.ng.termii.com/api/get-balance?api_key=${rawKey}`, { timeout: 8000 });
+    diagnostic.balanceCheck = balRes.data;
+  } catch (err) {
+    diagnostic.balanceCheck = { error: err.response?.data || err.message, status: err.response?.status };
+  }
+
+  try {
+    const sndRes = await axios.get(`https://api.ng.termii.com/api/sender-id?api_key=${rawKey}`, { timeout: 8000 });
+    diagnostic.senderIdCheck = sndRes.data;
+  } catch (err) {
+    diagnostic.senderIdCheck = { error: err.response?.data || err.message, status: err.response?.status };
+  }
+
+  if (req.query.send === 'true') {
+    try {
+      const smsRes = await axios.post(
+        'https://api.ng.termii.com/api/sms/send',
+        {
+          to: normalised,
+          from: config.termii.senderId || 'N-Alert',
+          sms: 'UI Clearance System Test: Your notification service is connected.',
+          type: 'plain',
+          channel: 'dnd',
+          api_key: rawKey,
+        },
+        { timeout: 10000 }
+      );
+      diagnostic.testSmsResult = smsRes.data;
+    } catch (err) {
+      diagnostic.testSmsResult = { error: err.response?.data || err.message, status: err.response?.status };
+    }
+  }
+
+  res.json({ success: true, diagnostic });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/student', studentRoutes);
 app.use('/api/officer', officerRoutes);
