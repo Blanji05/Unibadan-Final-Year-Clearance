@@ -156,6 +156,8 @@ app.get('/api/termii-test', async (req, res) => {
   const axios = require('axios');
   const rawKey = String(config.termii.apiKey || '').trim();
   const phone = req.query.phone || '08089291233';
+  const sender = req.query.sender || config.termii.senderId || 'N-Alert';
+  const channel = req.query.channel || 'dnd';
   const { normalisePhone } = require('./utils/sendSMS');
   const normalised = normalisePhone(phone);
 
@@ -163,11 +165,13 @@ app.get('/api/termii-test', async (req, res) => {
     configured: Boolean(rawKey),
     keyPrefix: rawKey.slice(0, 4),
     keyLength: rawKey.length,
-    senderId: config.termii.senderId,
+    senderId: sender,
+    channel,
     targetPhone: normalised,
     balanceCheck: null,
     senderIdCheck: null,
     testSmsResult: null,
+    requestSenderResult: null,
   };
 
   if (!rawKey) {
@@ -188,16 +192,34 @@ app.get('/api/termii-test', async (req, res) => {
     diagnostic.senderIdCheck = { error: err.response?.data || err.message, status: err.response?.status };
   }
 
+  if (req.query.requestSender === 'true') {
+    try {
+      const reqRes = await axios.post(
+        'https://api.ng.termii.com/api/sender-id/request',
+        {
+          api_key: rawKey,
+          sender_id: req.query.requestedId || 'UICLEAR',
+          usecase: 'Student final year clearance status and approval notifications',
+          company: 'University of Ibadan',
+        },
+        { timeout: 10000 }
+      );
+      diagnostic.requestSenderResult = reqRes.data;
+    } catch (err) {
+      diagnostic.requestSenderResult = { error: err.response?.data || err.message, status: err.response?.status };
+    }
+  }
+
   if (req.query.send === 'true') {
     try {
       const smsRes = await axios.post(
         'https://api.ng.termii.com/api/sms/send',
         {
           to: normalised,
-          from: config.termii.senderId || 'N-Alert',
-          sms: 'UI Clearance System Test: Your notification service is connected.',
+          from: sender,
+          sms: req.query.msg || 'UI Clearance: System test message.',
           type: 'plain',
-          channel: 'dnd',
+          channel,
           api_key: rawKey,
         },
         { timeout: 10000 }
