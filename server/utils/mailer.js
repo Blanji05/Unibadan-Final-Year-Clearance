@@ -12,27 +12,26 @@ const axios = require('axios');
 const nodemailer = require('nodemailer');
 const { config } = require('../config/env');
 
-let transporter = null;
+function getTransporter(portOverride = null) {
+  const isBrevo = config.mail.host?.includes('brevo') || config.mail.host?.includes('sendinblue');
+  // Brevo port 2525 bypasses Render free-tier firewall blocks on port 587
+  const port = portOverride || (isBrevo && (!config.mail.port || config.mail.port === 587) ? 2525 : (config.mail.port || 587));
 
-function getTransporter() {
-  if (!transporter) {
-    const transportConfig = config.mail.service
-      ? {
-          service: config.mail.service,
-          auth: { user: config.mail.user, pass: config.mail.pass },
-        }
-      : {
-          host: config.mail.host,
-          port: config.mail.port,
-          secure: config.mail.secure,
-          auth: { user: config.mail.user, pass: config.mail.pass },
-        };
-    transportConfig.connectionTimeout = 12000;
-    transportConfig.greetingTimeout = 12000;
-    transportConfig.socketTimeout = 15000;
-    transporter = nodemailer.createTransport(transportConfig);
-  }
-  return transporter;
+  const transportConfig = config.mail.service
+    ? {
+        service: config.mail.service,
+        auth: { user: config.mail.user, pass: config.mail.pass },
+      }
+    : {
+        host: config.mail.host,
+        port,
+        secure: port === 465,
+        auth: { user: config.mail.user, pass: config.mail.pass },
+      };
+  transportConfig.connectionTimeout = 12000;
+  transportConfig.greetingTimeout = 12000;
+  transportConfig.socketTimeout = 15000;
+  return nodemailer.createTransport(transportConfig);
 }
 
 /**
@@ -150,10 +149,29 @@ async function sendEmail({ to, subject, text, html }) {
     console.log(`[email:sent] -> ${to} via SMTP (msgId: ${info?.messageId || 'ok'})`);
     return { status: 'sent', messageId: info?.messageId };
   } catch (error) {
+    // If failed on port 587 and host is Brevo, auto-retry on Brevo port 2525
+    if (config.mail.host?.includes('brevo') && config.mail.port !== 2525) {
+      try {
+        console.log('[email] Retrying Brevo SMTP on alternative unblocked port 2525...');
+        const retryTransporter = getTransporter(2525);
+        const retryInfo = await retryTransporter.sendMail({
+          from: config.mail.from,
+          to,
+          subject,
+          text,
+          html: html || text,
+        });
+        console.log(`[email:sent] -> ${to} via Brevo SMTP port 2525 (msgId: ${retryInfo?.messageId || 'ok'})`);
+        return { status: 'sent', messageId: retryInfo?.messageId };
+      } catch (retryErr) {
+        console.warn('[email] Brevo port 2525 retry failed:', retryErr.message);
+      }
+    }
+
     const isTimeout = error.message?.includes('timeout') || error.code === 'ETIMEDOUT';
     if (isTimeout) {
       console.warn(
-        `[email] SMTP send failed: ${error.message}. Note: Render free tier blocks outbound SMTP ports 25, 465, and 587. For guaranteed delivery on Render, add BREVO_API_KEY in Render Environment Variables.`
+        `[email] SMTP send failed: ${error.message}. Note: Render free tier blocks outbound SMTP ports 25, 465, and 587. For guaranteed delivery on Render, use port 2525 for Brevo.`
       );
     } else {
       console.warn('[email] SMTP send failed:', error.message);
