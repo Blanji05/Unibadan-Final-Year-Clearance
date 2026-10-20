@@ -357,7 +357,7 @@ export default function Requirements() {
                   </label>
                   <div className="form-actions">
                     <button type="submit" className="btn btn-primary btn-sm" disabled={creatingDoc}>
-                      {creatingDoc ? 'Saving…' : '+ Add Requirement'}
+                      {creatingDoc ? 'Saving…' : 'Add Requirement'}
                     </button>
                     <button
                       type="button"
@@ -506,7 +506,7 @@ export default function Requirements() {
                             disabled={busyId === req.document_type_id}
                           >
                             <IconPlus width={14} height={14} />
-                            + Request
+                            Request
                           </button>
                         </td>
                       </tr>
@@ -545,7 +545,7 @@ export default function Requirements() {
                   onClick={handleOpenAddField}
                 >
                   <IconPlus width={15} height={15} />
-                  + Add Custom Question
+                  Add Custom Question
                 </button>
               }
             />
@@ -645,7 +645,7 @@ export default function Requirements() {
 
                   <div className="form-actions">
                     <button type="submit" className="btn btn-primary btn-sm" disabled={savingField}>
-                      {savingField ? 'Saving…' : editingFieldId ? 'Update Question' : '+ Add Question to Form'}
+                      {savingField ? 'Saving…' : editingFieldId ? 'Update Question' : 'Add Question to Form'}
                     </button>
                     <button
                       type="button"
@@ -664,7 +664,7 @@ export default function Requirements() {
               <EmptyState
                 icon={IconClipboard}
                 title="No custom form fields created yet"
-                message="Click '+ Add Custom Question' above to add fields that students must answer when completing clearance in your section."
+                message="Click 'Add Custom Question' above to add fields that students must answer when completing clearance in your section."
               />
             ) : (
               <ul className="req-list">
