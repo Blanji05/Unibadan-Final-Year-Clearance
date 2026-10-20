@@ -130,6 +130,10 @@ export const officerApi = {
   studentClearance: (studentId) => api.get(`/officer/students/${studentId}/clearance`).then((r) => r.data.data),
   review: (studentId, stageId, decision, remarks) =>
     api.patch(`/officer/review/${studentId}/${stageId}`, { decision, remarks }).then((r) => r.data.data),
+  revokeApproval: (studentId, stageId, remarks) =>
+    api.post(`/officer/students/${studentId}/stages/${stageId}/revoke`, { remarks }).then((r) => r.data.data),
+  sendMessage: (studentId, payload) =>
+    api.post(`/officer/students/${studentId}/message`, payload).then((r) => r.data.data),
   reviewBulk: (studentIds, decision, remarks) =>
     api.post('/officer/review-bulk', { student_ids: studentIds, decision, remarks }).then((r) => r.data.data),
   // Document checklist for the officer's own section.

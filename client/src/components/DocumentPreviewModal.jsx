@@ -13,6 +13,7 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
   if (!doc) return null;
 
   const [imgError, setImgError] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(false);
 
   const currentIndex = docs.findIndex((d) => d.id === doc.id);
   const hasPrev = currentIndex > 0;
@@ -42,12 +43,22 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
             <div>
               <strong>{doc.doc_label || doc.original_name}</strong>
               <span className="doc-preview-meta">
-                {doc.original_name} {docs.length > 1 ? `(${currentIndex + 1} of ${docs.length})` : ''}
+                {doc.original_name} {docs.length > 1 ? `(${currentIndex + 1} of ${docs.length})` : ''} · {doc.mime_type || (isPdf ? 'PDF' : 'Image')}
               </span>
             </div>
           </div>
 
           <div className="doc-preview-header-actions">
+            {!isPdf && !imgError && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setIsZoomed((prev) => !prev)}
+                title="Toggle actual size zoom"
+              >
+                {isZoomed ? 'Fit to Screen' : '100% Zoom'}
+              </button>
+            )}
             <a
               href={fileSrc}
               download={doc.original_name}
@@ -70,7 +81,7 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
           </div>
         </div>
 
-        <div className="doc-preview-body">
+        <div className="doc-preview-body" style={{ overflow: 'auto' }}>
           {isPdf ? (
             <iframe
               src={fileSrc}
@@ -78,12 +89,28 @@ export default function DocumentPreviewModal({ doc, docs = [], onClose, onSelect
               className="doc-preview-iframe"
             />
           ) : !imgError ? (
-            <div className="doc-preview-img-container">
+            <div
+              className="doc-preview-img-container"
+              style={{
+                display: 'flex',
+                alignItems: isZoomed ? 'flex-start' : 'center',
+                justifyContent: isZoomed ? 'flex-start' : 'center',
+                minHeight: '100%',
+                padding: '0.5rem',
+              }}
+            >
               <img
                 src={fileSrc}
                 alt={doc.original_name}
                 className="doc-preview-image"
+                style={
+                  isZoomed
+                    ? { maxWidth: 'none', maxHeight: 'none', cursor: 'zoom-out', margin: 'auto' }
+                    : { maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', cursor: 'zoom-in' }
+                }
+                onClick={() => setIsZoomed((prev) => !prev)}
                 onError={() => setImgError(true)}
+                title="Click to toggle full resolution zoom"
               />
             </div>
           ) : (

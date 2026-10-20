@@ -131,9 +131,9 @@ const getHistory = asyncHandler(async (req, res) => {
   const stage = await resolveOfficerStage(req.user, req.query.stage_id);
 
   let sql = `
-    SELECT cs.student_id, cs.stage_id, cs.status, cs.remarks, cs.submitted_at,
+    SELECT cs.id AS clearance_status_id, cs.student_id, cs.stage_id, cs.status, cs.remarks, cs.submitted_at,
            COALESCE(cs.reviewed_at, cs.updated_at, cs.submitted_at, NOW()) AS reviewed_at,
-           u.full_name, u.matric_number, u.department, u.faculty, u.hall, u.passport_url
+           u.full_name, u.matric_number, u.department, u.faculty, u.hall, u.passport_url, u.email, u.phone_number
       FROM clearance_status cs
       JOIN users u ON cs.student_id = u.id
      WHERE cs.stage_id = ? AND cs.status IN ('approved','rejected')
@@ -180,6 +180,23 @@ const getHistory = asyncHandler(async (req, res) => {
   sql += ` ORDER BY COALESCE(cs.reviewed_at, cs.updated_at, cs.submitted_at) DESC LIMIT 150`;
   const history = await query(sql, params);
 
+  // Attach uploaded documents so officers can preview past submissions inline
+  for (const row of history) {
+    if (row.clearance_status_id) {
+      const docs = await query(
+        `SELECT d.id, d.file_url, d.original_name, d.mime_type, dt.label AS doc_label
+           FROM submission_documents sd
+           JOIN documents d ON sd.document_id = d.id
+           JOIN document_types dt ON d.document_type_id = dt.id
+          WHERE sd.clearance_status_id = ?`,
+        [row.clearance_status_id]
+      );
+      row.documents = docs;
+    } else {
+      row.documents = [];
+    }
+  }
+
   return sendSuccess(res, { stage, history });
 });
 
@@ -221,10 +238,12 @@ async function applyReview(officerId, studentId, stageId, decision, remarks, off
 
   if (student && stage) {
     const isApproved = decision === 'approved';
-    const title = `${stage.stage_name} ${isApproved ? 'Approved' : 'Rejected'}`;
+    const title = isApproved
+      ? `${stage.stage_name} Approved`
+      : `Action Required: ${stage.stage_name} Clearance Disapproved / Revoked`;
     const message = isApproved
       ? `Congratulations! Your ${stage.stage_name} has been approved by the clearance officer. You have satisfied all requirements for this section and may now proceed with the remaining stages of your final year clearance.`
-      : `Your submission for ${stage.stage_name} was reviewed and rejected by the clearance officer.\n\nReason / Feedback:\n"${remarks}"\n\nPlease log in to your student portal, review the officer's remarks, re-upload the corrected documents or form details, and resubmit for approval.`;
+      : `Your clearance submission for ${stage.stage_name} has been disapproved / returned by the clearance officer.\n\nReason / Feedback:\n"${remarks}"\n\nPlease log in to your student portal, review the officer's remarks, re-upload the corrected documents or form details, and resubmit for approval.`;
 
     await notifyUser({
       userId: student.id,
@@ -235,7 +254,7 @@ async function applyReview(officerId, studentId, stageId, decision, remarks, off
       stageId,
       subject: isApproved
         ? `UI Clearance Approved: ${stage.stage_name}`
-        : `Action Required: ${stage.stage_name} Submission Rejected`,
+        : `Action Required: ${stage.stage_name} Submission Disapproved / Revoked`,
       actionUrl: isApproved
         ? 'https://unibadan-final-year-clearance.vercel.app/student'
         : `https://unibadan-final-year-clearance.vercel.app/student/stages/${stageId}`,
@@ -561,6 +580,89 @@ const deleteFormField = asyncHandler(async (req, res) => {
   return sendSuccess(res, result);
 });
 
+/**
+ * POST /api/officer/students/:studentId/message
+ * Section officer sends a direct message/instruction to a student via In-App, SMS, WhatsApp, and Email.
+ */
+const sendStudentMessage = asyncHandler(async (req, res) => {
+  const studentId = Number(req.params.studentId);
+  const { subject, message, stage_id } = req.body;
+
+  if (!message || !message.trim()) {
+    throw new ApiError('Message content cannot be empty.', 400);
+  }
+
+  const student = await queryOne(
+    'SELECT id, full_name, matric_number, email, phone_number, department, faculty, hall FROM users WHERE id = ?',
+    [studentId]
+  );
+  if (!student) throw new ApiError('Student not found.', 404);
+
+  // Scoping check for department/faculty/hall officers
+  if (req.user.section_code === 'department' && req.user.department) {
+    const sDept = (student.department || '').toLowerCase().trim();
+    const oDept = req.user.department.toLowerCase().trim();
+    if (sDept !== oDept && !sDept.includes(oDept) && !oDept.includes(sDept)) {
+      throw new ApiError(`This student belongs to ${student.department || 'another department'}, not ${req.user.department}.`, 403);
+    }
+  } else if (req.user.section_code === 'faculty' && req.user.faculty) {
+    const sFac = (student.faculty || '').replace(/^Faculty of\s+/i, '').toLowerCase().trim();
+    const oFac = req.user.faculty.replace(/^Faculty of\s+/i, '').toLowerCase().trim();
+    if (sFac !== oFac) {
+      throw new ApiError(`This student belongs to Faculty of ${student.faculty}, not ${req.user.faculty}.`, 403);
+    }
+  } else if (req.user.section_code === 'hall' && req.user.hall) {
+    const sHall = (student.hall || '').toLowerCase().trim();
+    const oHall = req.user.hall.toLowerCase().trim();
+    if (sHall !== oHall && !sHall.includes(oHall) && !oHall.includes(sHall)) {
+      throw new ApiError(`This student resides in ${student.hall || 'another hall of residence'}, not ${req.user.hall}.`, 403);
+    }
+  }
+
+  const stage = stage_id ? await queryOne('SELECT stage_name FROM clearance_stages WHERE id = ?', [stage_id]) : null;
+  const stageName = stage?.stage_name || (req.user.section_code ? `${req.user.section_code.toUpperCase()} Clearance` : 'Clearance Office');
+  const officerName = req.user.full_name || 'Section Clearance Officer';
+
+  const title = subject?.trim() || `Clearance Notice from ${officerName}`;
+  const fullBody = `${message.trim()}\n\n— Sent by ${officerName} (${stageName}), University of Ibadan.`;
+
+  await notifyUser({
+    userId: student.id,
+    phone: student.phone_number,
+    email: student.email,
+    title,
+    message: fullBody,
+    stageId: stage_id || null,
+    subject: `[UI Clearance Notice] ${title}`,
+    actionUrl: 'https://unibadan-final-year-clearance.vercel.app/student',
+    actionText: 'Open Clearance Portal',
+  });
+
+  return sendSuccess(res, {
+    message: `Message dispatched successfully to ${student.full_name} via In-App, Email, SMS, and WhatsApp alerts.`,
+  });
+});
+
+/**
+ * POST /api/officer/students/:studentId/stages/:stageId/revoke
+ * Officer revokes / disapproves a previously approved clearance with mandatory reasons.
+ */
+const revokeApproval = asyncHandler(async (req, res) => {
+  const studentId = Number(req.params.studentId);
+  const stageId = Number(req.params.stageId);
+  const { remarks } = req.body;
+
+  if (!remarks || !remarks.trim()) {
+    throw new ApiError('A mandatory reason is required to revoke/disapprove this clearance approval.', 400);
+  }
+
+  const result = await applyReview(req.user.id, studentId, stageId, 'rejected', remarks.trim(), req.user);
+  return sendSuccess(res, {
+    ...result,
+    message: 'Clearance approval successfully revoked. Student has been notified and status set to Rejected.',
+  });
+});
+
 module.exports = {
   getPendingRequests,
   getHistory,
@@ -582,4 +684,6 @@ module.exports = {
   addFormField,
   updateFormField,
   deleteFormField,
+  sendStudentMessage,
+  revokeApproval,
 };

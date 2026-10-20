@@ -90,4 +90,30 @@ router.patch(
   controller.reviewSubmission
 );
 
+// Officer sends direct broadcast message/alert to student
+router.post(
+  '/students/:studentId/message',
+  [
+    param('studentId').isInt({ min: 1 }),
+    body('message').trim().isLength({ min: 1, max: 1000 }).withMessage('Message is required (up to 1000 characters).'),
+    body('subject').optional().trim().isLength({ max: 200 }),
+    body('stage_id').optional().isInt({ min: 1 }),
+  ],
+  validate,
+  controller.sendStudentMessage
+);
+
+// Officer revokes / disapproves a previously approved clearance stage with mandatory reason
+router.post(
+  '/students/:studentId/stages/:stageId/revoke',
+  restrictToOwnSection,
+  [
+    param('studentId').isInt({ min: 1 }),
+    param('stageId').isInt({ min: 1 }),
+    body('remarks').trim().isLength({ min: 3, max: 500 }).withMessage('A mandatory reason is required to revoke approval (3-500 characters).'),
+  ],
+  validate,
+  controller.revokeApproval
+);
+
 module.exports = router;

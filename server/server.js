@@ -72,12 +72,18 @@ app.get('/api/documents/:id/file', async (req, res) => {
 
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
     res.setHeader('Content-Disposition', `inline; filename="${doc.original_name || 'document'}"`);
 
     // 1. If stored in database as BLOB
-    if (doc.file_data && Buffer.isBuffer(doc.file_data) && doc.file_data.length > 0) {
-      res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
-      return res.send(doc.file_data);
+    if (doc.file_data) {
+      const buf = Buffer.isBuffer(doc.file_data) ? doc.file_data : Buffer.from(doc.file_data);
+      if (buf.length > 0) {
+        res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
+        return res.send(buf);
+      }
     }
 
     // 2. If file_url is a base64 Data URI

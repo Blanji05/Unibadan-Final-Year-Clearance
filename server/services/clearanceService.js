@@ -484,8 +484,8 @@ async function reviewStage(officerId, studentId, stageId, decision, remarks) {
     [studentId, stageId]
   );
   if (!status) throw new ApiError('Clearance status record not found.', 404);
-  if (status.status !== 'pending') {
-    throw new ApiError('Only pending submissions can be reviewed.', 400);
+  if (status.status !== 'pending' && !(decision === 'rejected' && status.status === 'approved')) {
+    throw new ApiError('Only pending submissions or approved submissions being revoked can be reviewed.', 400);
   }
 
   if (decision === 'approved') {
@@ -508,9 +508,11 @@ async function reviewStage(officerId, studentId, stageId, decision, remarks) {
       [decision, officerId, remarks, officer.full_name, officer.signature_url, slipRef, status.id]
     );
   } else {
+    // Decision is 'rejected' or revocation of approval
     await query(
       `UPDATE clearance_status
-          SET status = ?, officer_id = ?, remarks = ?, reviewed_at = NOW()
+          SET status = ?, officer_id = ?, remarks = ?, reviewed_at = NOW(),
+              officer_name_snapshot = NULL, officer_signature_snapshot = NULL, slip_reference = NULL
         WHERE id = ?`,
       [decision, officerId, remarks, status.id]
     );
