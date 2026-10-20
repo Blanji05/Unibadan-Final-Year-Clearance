@@ -57,8 +57,8 @@ const UI_STAGE_GUIDES = {
     title: 'Alumni Association Clearance',
     time: 'Within 24 Hours',
     instructions: [
-      'Complete the ₦1,000 alumni dues payment online via Remita on this portal, or upload your bank payment receipt/teller.',
-      'Register on the UI Alumni portal (www.alumni.ui.edu.ng) and upload your printed/digital Alumni Registration Form below.',
+      'Complete the ₦1,000 alumni dues payment online via Paystack on this portal, or upload your payment receipt.',
+      'Upload your completed digital Alumni Registration Form below.',
       'Click "Submit for Clearance" for review by the Alumni Relations Officer.',
       'Once approved, download your official stamped Alumni Clearance Slip (PDF).',
     ],

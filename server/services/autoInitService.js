@@ -108,6 +108,11 @@ async function ensureSchemaAndSeed(force = false) {
          WHERE code = 'alumni_receipt'
       `);
       await query(`
+        UPDATE document_types 
+           SET description = 'Digital Alumni Registration Form' 
+         WHERE code = 'alumni_form' OR id = 8
+      `);
+      await query(`
         UPDATE users 
            SET full_name = 'University Health Services Officer' 
          WHERE email = 'clinic.officer@ui.edu.ng' OR (role = 'officer' AND section_code = 'clinic')

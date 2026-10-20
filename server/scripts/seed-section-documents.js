@@ -21,7 +21,7 @@ async function seedSectionDocuments() {
     { code: 'maintenance_clearance', label: 'Hall Maintenance Clearance', description: 'Hall maintenance clearance sign-off' },
     { code: 'jaja_card', label: 'Jaja Health Card', description: 'University Health Services clinic card' },
     { code: 'alumni_receipt', label: '₦1,000 Bank Teller / Alumni Payment Receipt', description: '₦1,000 bank teller or payment receipt for alumni dues' },
-    { code: 'alumni_form', label: 'Printed Online Alumni Form', description: 'Printed online alumni registration form from alumni.ui.edu.ng' },
+    { code: 'alumni_form', label: 'Alumni Registration Form', description: 'Digital Alumni Registration Form' },
     { code: 'dept_dues_receipts', label: 'Department Dues Receipts (100L to Final Year)', description: 'Department association dues receipts for every session' },
     { code: 'course_forms', label: 'Course Registration Forms (100L to Final Year)', description: 'Approved course forms for each year from 100L to final year' },
     { code: 'dept_signoff', label: 'Departmental Clearance Slip / Sign-off', description: 'Academic department clearance confirmation slip' },

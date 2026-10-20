@@ -280,7 +280,7 @@ INSERT INTO document_types (id, code, label, description) VALUES
   (5,'off_campus_form','Off-Campus Form','Required for any academic session student resided off campus'),
   (6,'room_clearance','Room Clearance Form','Hall room clearance sign-off'),
   (7,'jaja_card','University Health Services Card','University Health Services medical registration card'),
-  (8,'alumni_form','Alumni Registration Form','Completed and printed form from alumni.ui.edu.ng'),
+  (8,'alumni_form','Alumni Registration Form','Digital Alumni Registration Form'),
   (9,'alumni_receipt','Alumni Payment Receipt (₦1,000)','Official payment receipt for alumni registration'),
   (10,'dept_signoff','Departmental Clearance Slip','Academic department clearance confirmation and dues sign-off'),
   (11,'graduation_fee_receipt','Graduation Fee Receipt','Official receipt for graduation / convocation fee'),
