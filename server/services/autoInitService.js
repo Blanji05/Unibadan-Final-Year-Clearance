@@ -35,7 +35,14 @@ const HALL_EMAIL_SLUGS = {
 
 async function ensureSchemaAndSeed(force = false) {
   try {
-    // 0. Update clearance stages and document types to clean, digital wording
+    // 0. Priority Schema Migrations: Execute unconditionally with individual error barriers
+    try { await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL'); } catch (_) {}
+    try { await query('ALTER TABLE documents MODIFY COLUMN file_url LONGTEXT NOT NULL'); } catch (_) {}
+    try { await query('ALTER TABLE users MODIFY COLUMN passport_url LONGTEXT DEFAULT NULL'); } catch (_) {}
+    try { await query('ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT DEFAULT NULL'); } catch (_) {}
+    try { await query("ALTER TABLE notifications MODIFY COLUMN channel VARCHAR(50) NOT NULL DEFAULT 'in_app'"); } catch (_) {}
+
+    // Update clearance stages and document types to clean, digital wording
     try {
       await query(`UPDATE clearance_stages SET location = NULL WHERE location IS NOT NULL`);
       await query(`

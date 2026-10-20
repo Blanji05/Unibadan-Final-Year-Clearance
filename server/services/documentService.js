@@ -14,11 +14,35 @@ async function uploadDocument(studentId, documentTypeId, file) {
 
   const { url, publicId } = await storeFile(file, studentId);
 
-  const result = await query(
-    `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size, file_data)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size, file.buffer]
-  );
+  let result;
+  try {
+    result = await query(
+      `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size, file_data)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size, file.buffer]
+    );
+  } catch (err) {
+    if (err.message && err.message.includes("Unknown column 'file_data'")) {
+      try {
+        await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL');
+      } catch (_) {}
+      try {
+        result = await query(
+          `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size, file_data)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size, file.buffer]
+        );
+      } catch (retryErr) {
+        result = await query(
+          `INSERT INTO documents (student_id, document_type_id, file_url, storage_public_id, original_name, mime_type, file_size)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          [studentId, documentTypeId, url, publicId, file.originalname, file.mimetype, file.size]
+        );
+      }
+    } else {
+      throw err;
+    }
+  }
 
   try {
     const { emitToUser, emitToRole } = require('./realtimeService');
@@ -95,12 +119,37 @@ async function replaceDocument(studentId, documentId, file) {
     console.warn('[replaceDocument] old file removal warning:', err.message);
   }
 
-  await query(
-    `UPDATE documents
-     SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP, file_data = ?
-     WHERE id = ?`,
-    [url, publicId, file.originalname, file.mimetype, file.size, file.buffer, documentId]
-  );
+  try {
+    await query(
+      `UPDATE documents
+       SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP, file_data = ?
+       WHERE id = ?`,
+      [url, publicId, file.originalname, file.mimetype, file.size, file.buffer, documentId]
+    );
+  } catch (err) {
+    if (err.message && err.message.includes("Unknown column 'file_data'")) {
+      try {
+        await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL');
+      } catch (_) {}
+      try {
+        await query(
+          `UPDATE documents
+           SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP, file_data = ?
+           WHERE id = ?`,
+          [url, publicId, file.originalname, file.mimetype, file.size, file.buffer, documentId]
+        );
+      } catch (retryErr) {
+        await query(
+          `UPDATE documents
+           SET file_url = ?, storage_public_id = ?, original_name = ?, mime_type = ?, file_size = ?, uploaded_at = CURRENT_TIMESTAMP
+           WHERE id = ?`,
+          [url, publicId, file.originalname, file.mimetype, file.size, documentId]
+        );
+      }
+    } else {
+      throw err;
+    }
+  }
 
   const updatedDoc = await queryOne(
     `SELECT d.id, d.document_type_id, dt.code AS doc_code, dt.label AS doc_label,
@@ -174,11 +223,6 @@ async function getDocumentTypes() {
 
 /**
  * Build a stage-by-stage view of the student's vault.
- *
- * A document is stored once against its type, and `stage_requirements` maps
- * types to stages, so a shared file (e.g. school fee receipts) legitimately
- * appears under every stage that asks for it. `is_shared` flags those so the
- * UI can explain why the same upload shows up more than once.
  */
 async function getDocumentsByStage(studentId) {
   const [stages, student] = await Promise.all([
@@ -201,10 +245,8 @@ async function getDocumentsByStage(studentId) {
       ORDER BY sr.stage_id, dt.label`
   );
 
-  // Already carries is_locked per document.
   const documents = await getStudentDocuments(studentId);
 
-  // How many stages ask for each type -> drives the "shared" badge.
   const typeUsage = requirements.reduce((acc, r) => {
     acc[r.document_type_id] = (acc[r.document_type_id] || 0) + 1;
     return acc;
@@ -247,21 +289,13 @@ async function getDocumentsByStage(studentId) {
       required_documents,
       uploaded_count: uploaded,
       required_count: required_documents.length,
-      // Drives the "ready to submit" hint on the documents page.
       all_mandatory_uploaded: mandatory.length === mandatoryUploaded,
     };
   });
 }
 
 /**
- * One row per document any section currently asks for, listing which sections
- * asked and whether the student has satisfied it.
- *
- * The per-stage view answers "what does the Library want?"; this answers the
- * question students actually start from — "what do I still need to upload?" —
- * without repeating a shared document once per stage. Since section officers
- * maintain `stage_requirements` themselves, this list is exactly what they asked
- * for, no more.
+ * Check requirements across sections.
  */
 async function getRequirementChecklist(studentId) {
   const requirements = await query(
@@ -289,7 +323,6 @@ async function getRequirementChecklist(studentId) {
         code: r.code,
         label: r.label,
         description: r.description,
-        // A document is only truly required if at least one section made it mandatory.
         is_mandatory: false,
         required_by: [],
         optional_for: [],
