@@ -1,112 +1,102 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { notificationsApi } from '../services/api';
-import { realtime } from '../services/realtime';
 import { IconBell } from './Icons';
+import { realtime } from '../services/realtime';
 
+/** How often the unread count refreshes while the page stays open (fallback). */
+const POLL_MS = 30000;
+
+/** "3m ago" style stamp — precise timestamps add nothing in this panel. */
 function timeAgo(iso) {
-  if (!iso) return '';
-  const diff = Math.max(0, Date.now() - new Date(iso).getTime());
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
+  const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
 }
 
+/**
+ * Topbar bell. Shows the unread count, opens the in-app inbox, and lets the
+ * user mark items read. Listens to real-time events and polls on fallback.
+ */
 export default function NotificationBell() {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const dropdownRef = useRef(null);
+  const [unread, setUnread] = useState(0);
+  const [loading, setLoading] = useState(false);
 
-  const refresh = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       const data = await notificationsApi.list();
       setItems(data.notifications || []);
-      setUnreadCount(data.unread_count || 0);
+      setUnread(data.unread || 0);
     } catch {
-      // Silently swallow fetch errors on interval
+      // The bell is a convenience surface; a failed poll stays silent rather
+      // than interrupting whatever the user is doing.
     }
   }, []);
 
   useEffect(() => {
-    refresh();
-    const timer = setInterval(refresh, 60000);
-    const unsub = realtime.on('notification:new', (notif) => {
-      setItems((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
-      setUnreadCount((c) => c + 1);
-    });
+    load();
+    const unsubNotif = realtime.on('notification:new', () => load());
+    const unsubClear = realtime.on('clearance:update', () => load());
+    const timer = setInterval(load, POLL_MS);
     return () => {
+      unsubNotif();
+      unsubClear();
       clearInterval(timer);
-      unsub();
     };
-  }, [refresh]);
+  }, [load]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onClick = (e) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
-        setOpen(false);
-      }
-    };
-    window.addEventListener('click', onClick);
-    return () => window.removeEventListener('click', onClick);
-  }, [open]);
-
-  const markAllRead = async () => {
-    try {
-      await notificationsApi.markAllAsRead();
-      setItems((prev) => prev.map((n) => ({ ...n, read_at: n.read_at || new Date().toISOString() })));
-      setUnreadCount(0);
-    } catch {
-      // Ignore
+  const toggle = async () => {
+    const next = !open;
+    setOpen(next);
+    if (next) {
+      setLoading(true);
+      await load();
+      setLoading(false);
     }
+  };
+
+  const markAll = async () => {
+    await notificationsApi.markAllRead();
+    await load();
   };
 
   const markOne = async (id) => {
-    try {
-      await notificationsApi.markAsRead(id);
-      setItems((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      // Ignore
-    }
+    await notificationsApi.markRead(id);
+    await load();
   };
 
   return (
-    <div className="notif-wrapper" ref={dropdownRef}>
-      <button
-        type="button"
-        className="notif-btn"
-        onClick={() => setOpen((v) => !v)}
-        aria-label="Notifications"
-        aria-expanded={open}
-      >
-        <IconBell />
-        {unreadCount > 0 && (
-          <span className="notif-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>
-        )}
+    <div className="notif-wrap">
+      <button className="notif-btn" onClick={toggle} type="button" aria-label="Notifications">
+        <IconBell width={19} height={19} />
+        {unread > 0 && <span className="notif-badge">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (
         <>
-          <div className="notif-overlay" onClick={() => setOpen(false)} />
-          <div className="notif-dropdown">
+          {/* Invisible click-away layer, so any outside click closes the panel. */}
+          <div className="notif-backdrop" onClick={() => setOpen(false)} />
+
+          <div className="notif-panel">
             <div className="notif-head">
-              <span className="notif-title">Notifications</span>
-              {unreadCount > 0 && (
-                <button type="button" className="notif-mark-read" onClick={markAllRead}>
+              <strong>Notifications</strong>
+              {unread > 0 && (
+                <button className="notif-mark" onClick={markAll} type="button">
                   Mark all read
                 </button>
               )}
             </div>
 
-            <div className="notif-body">
-              {items.length === 0 && <p className="notif-empty">No notifications yet.</p>}
+            <div className="notif-list">
+              {loading && items.length === 0 && <p className="notif-empty">Loading…</p>}
+              {!loading && items.length === 0 && (
+                <p className="notif-empty">Nothing yet. Updates about your clearance will appear here.</p>
+              )}
 
               {items.map((n) => (
                 <div
