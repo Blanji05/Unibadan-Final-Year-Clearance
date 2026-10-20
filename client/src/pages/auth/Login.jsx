@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconEye, IconEyeOff } from '../../components/Icons';
@@ -11,6 +11,11 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    setEmail('');
+    setPassword('');
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,16 +40,22 @@ export default function Login() {
 
         {error && <div className="error">{error}</div>}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="off">
+          {/* Invisible inputs to prevent browser credential managers from pre-filling inputs */}
+          <input type="text" name="fake_username_prevent_autofill" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+          <input type="password" name="fake_password_prevent_autofill" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" />
+
           <div className="form-group">
             <label>Email or Matric Number</label>
             <input
               type="text"
+              name="matric_or_email"
+              id="matric_or_email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
               placeholder="e.g. 230922 or student@ui.edu.ng"
-              autoComplete="username"
+              autoComplete="off"
             />
           </div>
 
@@ -53,11 +64,13 @@ export default function Login() {
             <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="user_access_password"
+                id="user_access_password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 style={{ paddingRight: '2.5rem' }}
-                autoComplete="current-password"
+                autoComplete="new-password"
               />
               <button
                 type="button"
