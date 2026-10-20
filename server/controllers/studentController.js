@@ -118,6 +118,13 @@ const initiatePayment = asyncHandler(async (req, res) => {
   return sendSuccess(res, result, 201);
 });
 
+
+/** DELETE /api/student/payments/:paymentId */
+const cancelPayment = asyncHandler(async (req, res) => {
+  const result = await paymentService.cancelPayment(req.user.id, Number(req.params.paymentId));
+  return sendSuccess(res, result);
+});
+
 /** GET /api/student/payments */
 const getPayments = asyncHandler(async (req, res) => {
   const payments = await paymentService.getStudentPayments(req.user.id);
@@ -354,6 +361,7 @@ module.exports = {
   submitStage,
   initiatePayment,
   getPayments,
+  cancelPayment,
   getReceipt,
   getTimeline,
   getCertificate,

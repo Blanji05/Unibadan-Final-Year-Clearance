@@ -38,7 +38,7 @@ const config = {
   },
 
   paystack: {
-    secretKey: process.env.PAYSTACK_SECRET_KEY,
+    secretKey: process.env.PAYSTACK_SECRET_KEY || 'sk_test_1103c7ee25e978e14a8ce5cdb0f3aac8b852fd54',
     publicKey: process.env.PAYSTACK_PUBLIC_KEY,
     get enabled() {
       return bool(this.secretKey);

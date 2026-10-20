@@ -88,6 +88,7 @@ export const studentApi = {
       .then((r) => r.data.data),
   pay: (stageId) => api.post(`/student/pay/${stageId}`).then((r) => r.data.data),
   payments: () => api.get('/student/payments').then((r) => r.data.data.payments),
+  cancelPayment: (paymentId) => api.delete(`/student/payments/${paymentId}`).then((r) => r.data.data),
   // PDF receipt as a Blob (auth header required, so it cannot be a plain link).
   receipt: (paymentId) =>
     api.get(`/student/payments/${paymentId}/receipt`, { responseType: 'blob' }).then((r) => r.data),

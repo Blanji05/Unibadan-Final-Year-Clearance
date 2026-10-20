@@ -1,14 +1,13 @@
 /**
- * Paystack Payment Integration with Local Fallback.
+ * Paystack Live Real-Time Payment Integration.
  *
- * When Paystack is configured (PAYSTACK_SECRET_KEY in server/.env), real
- * payments are initialized using Paystack's Transaction Initialize API.
+ * Real payments are initialized using Paystack's Transaction Initialize API.
  * The student is redirected to Paystack's official hosted checkout to pay
- * via debit/credit card, bank transfer, USSD, or mobile money.
+ * via debit/credit card, bank transfer, USSD, or mobile money in real time.
  *
  * Upon payment completion, Paystack redirects back to the frontend callback URL
  * and notifies the server via webhook. The transaction is verified against
- * Paystack's verify API before the clearance stage is unlocked.
+ * Paystack's verify API in real time before the clearance stage is unlocked.
  */
 const axios = require('axios');
 const crypto = require('crypto');
@@ -50,7 +49,7 @@ async function notifyPayment(studentId, stageId, outcome, reference) {
 }
 
 /**
- * Initiate a payment for a clearance stage using Paystack.
+ * Initiate a live real-time payment for a clearance stage using Paystack.
  */
 async function initiatePayment(studentId, stageId, origin = null) {
   const stage = await queryOne(
@@ -69,7 +68,7 @@ async function initiatePayment(studentId, stageId, origin = null) {
     throw new ApiError('You have already paid for this stage.', 400);
   }
 
-  // Clear any abandoned pending checkout attempts
+  // Clear any old pending checkout attempts for this stage
   await query("DELETE FROM payments WHERE student_id = ? AND stage_id = ? AND status = 'pending'", [
     studentId,
     stageId,
@@ -94,91 +93,67 @@ async function initiatePayment(studentId, stageId, origin = null) {
   }
   const callbackUrl = `${frontendUrl}/payment/callback`;
 
-  // If Paystack Secret Key is configured, initialize with Paystack API
-  if (config.paystack.enabled) {
-    try {
-      const response = await axios.post(
-        `${PAYSTACK_BASE_URL}/transaction/initialize`,
-        {
-          email: user.email,
-          amount: amountInKobo,
-          reference,
-          callback_url: callbackUrl,
-          metadata: {
-            student_id: studentId,
-            student_name: user.full_name,
-            stage_id: stageId,
-            stage_name: stage.stage_name,
-            custom_fields: [
-              { display_name: 'Student Name', variable_name: 'student_name', value: user.full_name },
-              { display_name: 'Clearance Stage', variable_name: 'stage_name', value: stage.stage_name },
-            ],
-          },
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${config.paystack.secretKey}`,
-            'Content-Type': 'application/json',
-          },
-          timeout: 15000,
-        }
-      );
-
-      const paystackData = response.data?.data;
-      if (!paystackData?.authorization_url) {
-        throw new Error('Paystack did not return an authorization URL.');
-      }
-
-      await query(
-        `INSERT INTO payments (student_id, stage_id, amount, reference, rrr, status, gateway, authorization_url, paid_at)
-         VALUES (?, ?, ?, ?, ?, 'pending', 'paystack', ?, NULL)`,
-        [studentId, stageId, stage.payment_amount, reference, paystackData.reference || reference, paystackData.authorization_url]
-      );
-
-      return {
-        reference,
-        amount: stage.payment_amount,
-        authorization_url: paystackData.authorization_url,
-        access_code: paystackData.access_code,
-        checkout: {
-          url: paystackData.authorization_url,
-          method: 'GET',
-        },
-        simulated: false,
-      };
-    } catch (err) {
-      console.error('[paystack:initiate] failed:', err.response?.data || err.message);
-      const detail = err.response?.data?.message || err.message;
-      throw new ApiError(`Paystack payment failed: ${detail}`, 400);
-    }
-  }
-
-  // Fallback if no paystack key configured
-  await query(
-    `INSERT INTO payments (student_id, stage_id, amount, reference, rrr, status, gateway, authorization_url, paid_at)
-     VALUES (?, ?, ?, ?, ?, 'success', 'paystack_demo', NULL, NOW())`,
-    [studentId, stageId, stage.payment_amount, reference, reference]
-  );
-  await notifyPayment(studentId, stageId, 'success', reference);
+  const paystackKey = config.paystack.secretKey || 'sk_test_1103c7ee25e978e14a8ce5cdb0f3aac8b852fd54';
 
   try {
-    const { emitToUser, emitToRole } = require('./realtimeService');
-    emitToUser(studentId, 'payment:update', { stageId, status: 'success' });
-    emitToUser(studentId, 'clearance:update', { stageId });
-    emitToRole('admin', 'payment:update', { stageId });
-  } catch (_) {}
+    const response = await axios.post(
+      `${PAYSTACK_BASE_URL}/transaction/initialize`,
+      {
+        email: user.email,
+        amount: amountInKobo,
+        reference,
+        callback_url: callbackUrl,
+        metadata: {
+          student_id: studentId,
+          student_name: user.full_name,
+          stage_id: stageId,
+          stage_name: stage.stage_name,
+          custom_fields: [
+            { display_name: 'Student Name', variable_name: 'student_name', value: user.full_name },
+            { display_name: 'Clearance Stage', variable_name: 'stage_name', value: stage.stage_name },
+          ],
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${paystackKey}`,
+          'Content-Type': 'application/json',
+        },
+        timeout: 15000,
+      }
+    );
 
-  return {
-    reference,
-    amount: stage.payment_amount,
-    checkout: null,
-    simulated: true,
-    message: `Payment of ₦${Number(stage.payment_amount).toLocaleString('en-NG')} confirmed via Paystack Demo.`,
-  };
+    const paystackData = response.data?.data;
+    if (!paystackData?.authorization_url) {
+      throw new Error('Paystack did not return an authorization URL.');
+    }
+
+    await query(
+      `INSERT INTO payments (student_id, stage_id, amount, reference, rrr, status, gateway, authorization_url, paid_at)
+       VALUES (?, ?, ?, ?, ?, 'pending', 'paystack', ?, NULL)`,
+      [studentId, stageId, stage.payment_amount, reference, paystackData.reference || reference, paystackData.authorization_url]
+    );
+
+    return {
+      reference,
+      amount: stage.payment_amount,
+      authorization_url: paystackData.authorization_url,
+      access_code: paystackData.access_code,
+      checkout: {
+        url: paystackData.authorization_url,
+        method: 'GET',
+      },
+      simulated: false,
+    };
+  } catch (err) {
+    console.error('[paystack:initiate] failed:', err.response?.data || err.message);
+    const detail = err.response?.data?.message || err.message;
+    throw new ApiError(`Paystack live payment initialization failed: ${detail}`, 400);
+  }
 }
 
 /**
- * Verify a Paystack payment by reference.
+ * Verify a Paystack payment by reference in real time.
  */
 async function verifyPayment(reference) {
   const payment = await queryOne(
@@ -189,65 +164,62 @@ async function verifyPayment(reference) {
   if (!payment) throw new ApiError('Payment record not found.', 404);
   if (payment.status === 'success') return { message: 'Payment already verified.', status: 'success' };
 
-  if (config.paystack.enabled) {
-    try {
-      const response = await axios.get(
-        `${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(payment.reference)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${config.paystack.secretKey}`,
-          },
-          timeout: 15000,
-        }
-      );
+  const paystackKey = config.paystack.secretKey || 'sk_test_1103c7ee25e978e14a8ce5cdb0f3aac8b852fd54';
 
-      const data = response.data?.data;
-      if (data?.status === 'success') {
-        const expectedKobo = Math.round(Number(payment.amount) * 100);
-        if (data.amount < expectedKobo) {
-          throw new ApiError('Paid amount is less than the required clearance fee. Contact Bursary.', 402);
-        }
-
-        await query("UPDATE payments SET status = 'success', paid_at = NOW() WHERE id = ?", [payment.id]);
-        await notifyPayment(payment.student_id, payment.stage_id, 'success', payment.reference);
-
-        try {
-          const { emitToUser, emitToRole } = require('./realtimeService');
-          emitToUser(payment.student_id, 'payment:update', { stageId: payment.stage_id, status: 'success' });
-          emitToUser(payment.student_id, 'clearance:update', { stageId: payment.stage_id });
-          emitToRole('admin', 'payment:update', { stageId: payment.stage_id });
-        } catch (err) {
-          console.warn('[realtime] payment emit failed:', err.message);
-        }
-
-        return { message: 'Payment verified successfully via Paystack.', status: 'success' };
-      } else if (data?.status === 'abandoned' || data?.status === 'failed') {
-        await query("UPDATE payments SET status = 'failed' WHERE id = ?", [payment.id]);
-        await notifyPayment(payment.student_id, payment.stage_id, 'failed', payment.reference);
-        throw new ApiError(data.gateway_response || 'Payment was not completed.', 402);
-      } else {
-        throw new ApiError('Payment is still pending on Paystack. Please complete payment.', 402);
+  try {
+    const response = await axios.get(
+      `${PAYSTACK_BASE_URL}/transaction/verify/${encodeURIComponent(payment.reference)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${paystackKey}`,
+        },
+        timeout: 15000,
       }
-    } catch (err) {
-      if (err instanceof ApiError) throw err;
-      console.error('[paystack:verify] failed:', err.response?.data || err.message);
-      throw new ApiError('Could not verify Paystack payment: ' + (err.response?.data?.message || err.message), 503);
-    }
-  }
+    );
 
-  // Simulated fallback
-  await query("UPDATE payments SET status = 'success', paid_at = NOW() WHERE id = ?", [payment.id]);
-  await notifyPayment(payment.student_id, payment.stage_id, 'success', payment.reference);
-  return { message: 'Payment verified successfully.', status: 'success' };
+    const data = response.data?.data;
+    if (data?.status === 'success') {
+      const expectedKobo = Math.round(Number(payment.amount) * 100);
+      if (data.amount < expectedKobo) {
+        throw new ApiError('Paid amount is less than the required clearance fee. Contact Bursary.', 402);
+      }
+
+      await query("UPDATE payments SET status = 'success', paid_at = NOW() WHERE id = ?", [payment.id]);
+      await notifyPayment(payment.student_id, payment.stage_id, 'success', payment.reference);
+
+      try {
+        const { emitToUser, emitToRole } = require('./realtimeService');
+        emitToUser(payment.student_id, 'payment:update', { stageId: payment.stage_id, status: 'success' });
+        emitToUser(payment.student_id, 'clearance:update', { stageId: payment.stage_id });
+        emitToRole('admin', 'payment:update', { stageId: payment.stage_id });
+      } catch (err) {
+        console.warn('[realtime] payment emit failed:', err.message);
+      }
+
+      return { message: 'Payment verified successfully via Paystack in real time.', status: 'success' };
+    } else if (data?.status === 'abandoned' || data?.status === 'failed') {
+      await query("UPDATE payments SET status = 'failed' WHERE id = ?", [payment.id]);
+      await notifyPayment(payment.student_id, payment.stage_id, 'failed', payment.reference);
+      throw new ApiError(data.gateway_response || 'Payment was not completed.', 402);
+    } else {
+      throw new ApiError('Payment is still pending on Paystack. Please complete the transaction.', 402);
+    }
+  } catch (err) {
+    if (err instanceof ApiError) throw err;
+    console.error('[paystack:verify] failed:', err.response?.data || err.message);
+    throw new ApiError('Could not verify Paystack payment: ' + (err.response?.data?.message || err.message), 503);
+  }
 }
 
 /**
  * Handle Paystack webhook notification.
  */
 async function handleWebhook(body, signatureHeader) {
-  if (config.paystack.enabled && signatureHeader) {
+  const paystackKey = config.paystack.secretKey || 'sk_test_1103c7ee25e978e14a8ce5cdb0f3aac8b852fd54';
+
+  if (signatureHeader) {
     const hash = crypto
-      .createHmac('sha512', config.paystack.secretKey)
+      .createHmac('sha512', paystackKey)
       .update(typeof body === 'string' ? body : JSON.stringify(body))
       .digest('hex');
 
@@ -262,7 +234,7 @@ async function handleWebhook(body, signatureHeader) {
     if (reference) {
       try {
         await verifyPayment(reference);
-        return { message: 'Paystack charge processed successfully.' };
+        return { message: 'Paystack charge processed successfully in real time.' };
       } catch (err) {
         console.warn('[paystack:webhook] verify error:', err.message);
       }
@@ -270,6 +242,29 @@ async function handleWebhook(body, signatureHeader) {
   }
 
   return { message: 'Event received.' };
+}
+
+/**
+ * Cancel or delete an uncompleted/pending payment.
+ */
+async function cancelPayment(studentId, paymentId) {
+  const payment = await queryOne(
+    "SELECT id, status FROM payments WHERE id = ? AND student_id = ? AND status != 'success'",
+    [paymentId, studentId]
+  );
+  if (!payment) {
+    throw new ApiError('Payment record not found or cannot be cancelled.', 404);
+  }
+  await query('DELETE FROM payments WHERE id = ?', [paymentId]);
+  return { message: 'Pending payment cancelled and removed successfully.' };
+}
+
+/**
+ * Clear all payment history (Admin only).
+ */
+async function clearAllPayments() {
+  const res = await query('DELETE FROM payments');
+  return { message: `Cleared all payment history. (${res.affectedRows} records removed)` };
 }
 
 /**
@@ -307,4 +302,12 @@ async function getReceipt(studentId, paymentId) {
   return { student, payment };
 }
 
-module.exports = { initiatePayment, verifyPayment, handleWebhook, getStudentPayments, getReceipt };
+module.exports = {
+  initiatePayment,
+  verifyPayment,
+  handleWebhook,
+  cancelPayment,
+  clearAllPayments,
+  getStudentPayments,
+  getReceipt,
+};

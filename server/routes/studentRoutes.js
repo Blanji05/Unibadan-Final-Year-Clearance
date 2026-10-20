@@ -34,6 +34,7 @@ router.post(
 
 router.post('/pay/:stageId', controller.initiatePayment);
 router.get('/payments', controller.getPayments);
+router.delete('/payments/:paymentId', [param('paymentId').isInt({ min: 1 })], validate, controller.cancelPayment);
 router.get('/payments/:paymentId/receipt', [param('paymentId').isInt({ min: 1 })], validate, controller.getReceipt);
 
 router.get('/timeline', controller.getTimeline);
