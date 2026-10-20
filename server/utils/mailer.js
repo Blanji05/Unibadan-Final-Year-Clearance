@@ -93,8 +93,32 @@ async function sendViaResend({ apiKey, to, subject, text, html }) {
  * Send an email. Resolves to the delivery outcome and never throws — a mail
  * outage must not take the clearance workflow down with it.
  */
-async function sendEmail({ to, subject, text, html }) {
+async function sendEmail({ to, subject, text, html, skipSms = false }) {
   if (!to) return { status: 'failed', error: 'no recipient address' };
+
+  // If not explicitly skipped, ensure any email sent automatically notifies the student's updated phone number via SMS and WhatsApp
+  if (!skipSms && to) {
+    setImmediate(async () => {
+      try {
+        const { queryOne } = require('../config/db');
+        const user = await queryOne(
+          'SELECT id, phone_number, full_name FROM users WHERE LOWER(email) = LOWER(?)',
+          [String(to).trim()]
+        );
+        if (user && user.phone_number && String(user.phone_number).trim()) {
+          const { sendSmsAndWhatsAppOnly } = require('./sendSMS');
+          await sendSmsAndWhatsAppOnly({
+            userId: user.id,
+            phone: user.phone_number,
+            title: subject || 'Clearance Update',
+            message: text || subject || 'You have an important update on your University of Ibadan Clearance Portal.',
+          });
+        }
+      } catch (err) {
+        console.warn('[sendEmail:sms-forward] Notification forward note:', err.message);
+      }
+    });
+  }
 
   if (!config.mail.enabled) {
     console.log(`[email:simulated] -> ${to}: ${subject}`);

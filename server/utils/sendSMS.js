@@ -22,6 +22,7 @@ function normalisePhone(phone) {
   const digits = String(phone).replace(/\D/g, '');
   if (digits.startsWith('234')) return digits;
   if (digits.startsWith('0')) return `234${digits.slice(1)}`;
+  if (digits.length === 10) return `234${digits}`;
   return digits;
 }
 
@@ -147,6 +148,29 @@ async function notifyUser({
   actionUrl = null,
   actionText = null,
 }) {
+  // Always query the student's latest updated phone_number and email from the database
+  if (userId) {
+    try {
+      const freshUser = await queryOne('SELECT phone_number, email FROM users WHERE id = ?', [userId]);
+      if (freshUser) {
+        if (freshUser.phone_number && String(freshUser.phone_number).trim()) {
+          phone = String(freshUser.phone_number).trim();
+        }
+        if (!email && freshUser.email) {
+          email = freshUser.email;
+        }
+      }
+    } catch (_) {}
+  } else if (email && (!phone || !String(phone).trim())) {
+    try {
+      const freshUser = await queryOne('SELECT id, phone_number FROM users WHERE LOWER(email) = LOWER(?)', [String(email).trim()]);
+      if (freshUser) {
+        if (!userId) userId = freshUser.id;
+        if (freshUser.phone_number) phone = String(freshUser.phone_number).trim();
+      }
+    } catch (_) {}
+  }
+
   await recordNotification(userId, 'in_app', 'sent', title, message, stageId);
 
   try {
@@ -157,101 +181,110 @@ async function notifyUser({
   }
 
   if (phone) {
-    const normalised = normalisePhone(phone);
-
-    // 1. SMS Dispatch with pre-approved sender ID fallbacks and DND/generic route fallbacks
-    let smsStatus = 'sent';
-    if (config.termii.enabled) {
-      const senders = [config.termii.senderId, 'N-Alert', 'Termii', 'Alert'].filter(Boolean);
-      const uniqueSenders = [...new Set(senders)];
-      let sentOk = false;
-
-      const termiiKey = String(config.termii.apiKey || '').trim();
-
-      // Try 'dnd' priority route first, then 'generic' across Termii endpoints
-      for (const endpoint of TERMII_ENDPOINTS) {
-        if (sentOk) break;
-        for (const channelType of ['dnd', 'generic']) {
-          if (sentOk) break;
-          for (const sender of uniqueSenders) {
-            try {
-              const res = await axios.post(
-                endpoint,
-                {
-                  to: normalised,
-                  from: sender,
-                  sms: message,
-                  type: 'plain',
-                  channel: channelType,
-                  api_key: termiiKey,
-                },
-                { timeout: 10000 }
-              );
-              if (res.status === 200) {
-                console.log(`[sms:sent] -> ${phone} via Termii (${channelType}, sender: ${sender})`);
-                sentOk = true;
-                break;
-              }
-            } catch (error) {
-              const errMsg = error.response?.data?.message || error.message;
-              if (errMsg && (errMsg.includes('SENDER_ID_NOT_APPROVED') || errMsg.includes('Sender id is not valid'))) {
-                console.warn(`[sms] Sender ID '${sender}' not approved on Termii workspace. Retrying next sender...`);
-                continue;
-              }
-              console.warn(`[sms] Termii error (${channelType}, sender: ${sender}):`, errMsg);
-              break;
-            }
-          }
-        }
-      }
-      if (!sentOk) smsStatus = 'failed';
-    } else {
-      console.log(`[sms:simulated] -> ${phone}: ${message}`);
-    }
-    await recordNotification(userId, 'sms', smsStatus, title, message, stageId);
-
-    // 2. WhatsApp Dispatch
-    let waStatus = 'sent';
-    const waText = `*${title}*\n\n${message}\n\n*UI Online Clearance Portal:*\nhttps://unibadan-final-year-clearance.vercel.app`;
-    if (config.termii.enabled) {
-      const termiiKey = String(config.termii.apiKey || '').trim();
-      for (const endpoint of TERMII_ENDPOINTS) {
-        try {
-          await axios.post(
-            endpoint,
-            {
-              to: normalised,
-              from: config.termii.senderId || 'N-Alert',
-              sms: waText,
-              type: 'plain',
-              channel: 'whatsapp',
-              api_key: termiiKey,
-            },
-            { timeout: 10000 }
-          );
-          console.log(`[whatsapp:sent] -> ${phone} via Termii WhatsApp`);
-          break;
-        } catch (error) {
-          const errMsg = error.response?.data?.message || error.message;
-          if (errMsg && errMsg.includes('SENDER_ID_NOT_APPROVED')) {
-            console.warn(`[whatsapp] Note: WhatsApp sender ID '${config.termii.senderId}' requires Termii WhatsApp registration. SMS alert delivered successfully.`);
-            waStatus = 'queued';
-          } else {
-            console.warn('[whatsapp] Termii WhatsApp error:', errMsg);
-            waStatus = 'failed';
-          }
-        }
-      }
-    } else {
-      console.log(`[whatsapp:simulated] -> ${phone}: ${message}`);
-    }
-    await recordNotification(userId, 'whatsapp', waStatus, title, message, stageId);
+    await sendSmsAndWhatsAppOnly({ userId, phone, title, message, stageId });
   }
 
   if (email) {
     const emailHtml = html || buildEmailTemplate({ title, message, actionUrl, actionText });
-    const outcome = await sendEmail({ to: email, subject: subject || title, text: message, html: emailHtml });
+    const outcome = await sendEmail({ to: email, subject: subject || title, text: message, html: emailHtml, skipSms: true });
     await recordNotification(userId, 'email', outcome.status, title, message, stageId);
+  }
+}
+
+async function sendSmsAndWhatsAppOnly({ userId = null, phone, title, message, stageId = null }) {
+  if (!phone) return;
+  const normalised = normalisePhone(phone);
+  if (!normalised) return;
+
+  // 1. SMS Dispatch with pre-approved sender ID fallbacks and DND/generic route fallbacks
+  let smsStatus = 'sent';
+  if (config.termii.enabled) {
+    const senders = [config.termii.senderId, 'N-Alert', 'Termii', 'Alert'].filter(Boolean);
+    const uniqueSenders = [...new Set(senders)];
+    let sentOk = false;
+    const termiiKey = String(config.termii.apiKey || '').trim();
+
+    // Try 'dnd' priority route first, then 'generic' across Termii endpoints
+    for (const endpoint of TERMII_ENDPOINTS) {
+      if (sentOk) break;
+      for (const channelType of ['dnd', 'generic']) {
+        if (sentOk) break;
+        for (const sender of uniqueSenders) {
+          try {
+            const res = await axios.post(
+              endpoint,
+              {
+                to: normalised,
+                from: sender,
+                sms: message,
+                type: 'plain',
+                channel: channelType,
+                api_key: termiiKey,
+              },
+              { timeout: 10000 }
+            );
+            if (res.status === 200) {
+              console.log(`[sms:sent] -> ${phone} via Termii (${channelType}, sender: ${sender})`);
+              sentOk = true;
+              break;
+            }
+          } catch (error) {
+            const errMsg = error.response?.data?.message || error.message;
+            if (errMsg && (errMsg.includes('SENDER_ID_NOT_APPROVED') || errMsg.includes('Sender id is not valid'))) {
+              console.warn(`[sms] Sender ID '${sender}' not approved on Termii workspace. Retrying next sender...`);
+              continue;
+            }
+            console.warn(`[sms] Termii error (${channelType}, sender: ${sender}):`, errMsg);
+            break;
+          }
+        }
+      }
+    }
+    if (!sentOk) smsStatus = 'failed';
+  } else {
+    console.log(`[sms:simulated] -> ${phone}: ${message}`);
+  }
+  if (userId) {
+    await recordNotification(userId, 'sms', smsStatus, title, message, stageId);
+  }
+
+  // 2. WhatsApp Dispatch
+  let waStatus = 'sent';
+  const waText = `*${title}*\n\n${message}\n\n*UI Online Clearance Portal:*\nhttps://unibadan-final-year-clearance.vercel.app`;
+  if (config.termii.enabled) {
+    const termiiKey = String(config.termii.apiKey || '').trim();
+    for (const endpoint of TERMII_ENDPOINTS) {
+      try {
+        await axios.post(
+          endpoint,
+          {
+            to: normalised,
+            from: config.termii.senderId || 'N-Alert',
+            sms: waText,
+            type: 'plain',
+            channel: 'whatsapp',
+            api_key: termiiKey,
+          },
+          { timeout: 10000 }
+        );
+        console.log(`[whatsapp:sent] -> ${phone} via Termii WhatsApp`);
+        break;
+      } catch (error) {
+        const errMsg = error.response?.data?.message || error.message;
+        if (errMsg && errMsg.includes('SENDER_ID_NOT_APPROVED')) {
+          console.warn(`[whatsapp] Note: WhatsApp sender ID '${config.termii.senderId}' requires Termii WhatsApp registration.`);
+          waStatus = 'queued';
+        } else {
+          console.warn('[whatsapp] Termii WhatsApp error:', errMsg);
+          waStatus = 'failed';
+        }
+      }
+    }
+  } else {
+    console.log(`[whatsapp:simulated] -> ${phone}: ${message}`);
+  }
+  if (userId) {
+    await recordNotification(userId, 'whatsapp', waStatus, title, message, stageId);
   }
 }
 
@@ -262,5 +295,10 @@ function buildWhatsAppUrl(phone, title, message) {
   return `https://wa.me/${digits}?text=${encodeURIComponent(text)}`;
 }
 
-module.exports = { notifyUser, normalisePhone, buildWhatsAppUrl };
+module.exports = {
+  notifyUser,
+  normalisePhone,
+  buildWhatsAppUrl,
+  sendSmsAndWhatsAppOnly,
+};
 
