@@ -113,10 +113,33 @@ export default function NotificationBell() {
                     {n.title}
                   </span>
                   <span className="notif-item-msg">{n.message}</span>
-                  <span className="notif-item-time" style={{ marginTop: '0.35rem', display: 'block' }}>
-                    {timeAgo(n.created_at)}
-                    {n.stage_name ? ` · ${n.stage_name}` : ''}
-                  </span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.4rem' }}>
+                    <span className="notif-item-time">
+                      {timeAgo(n.created_at)}
+                      {n.stage_name ? ` · ${n.stage_name}` : ''}
+                    </span>
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`*UI Clearance Notification: ${n.title}*\n\n${n.message}\n\nCheck status: https://unibadan-final-year-clearance.vercel.app`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        fontSize: '0.72rem',
+                        fontWeight: '600',
+                        color: '#15803d',
+                        backgroundColor: '#dcfce7',
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '3px'
+                      }}
+                      title="Share / Open in WhatsApp"
+                    >
+                      💬 WhatsApp
+                    </a>
+                  </div>
                 </div>
               ))}
             </div>
