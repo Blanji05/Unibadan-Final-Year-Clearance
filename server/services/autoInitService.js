@@ -40,6 +40,7 @@ async function ensureSchemaAndSeed(force = false) {
     try { await query('ALTER TABLE documents MODIFY COLUMN file_url LONGTEXT NOT NULL'); } catch (_) {}
     try { await query('ALTER TABLE users MODIFY COLUMN passport_url LONGTEXT DEFAULT NULL'); } catch (_) {}
     try { await query('ALTER TABLE users MODIFY COLUMN signature_url LONGTEXT DEFAULT NULL'); } catch (_) {}
+    try { await query('ALTER TABLE clearance_status MODIFY COLUMN officer_signature_snapshot LONGTEXT DEFAULT NULL'); } catch (_) {}
     try { await query("ALTER TABLE notifications MODIFY COLUMN channel VARCHAR(50) NOT NULL DEFAULT 'in_app'"); } catch (_) {}
 
     // Update clearance stages and document types to clean, digital wording
@@ -154,6 +155,9 @@ async function ensureSchemaAndSeed(force = false) {
       } catch (_) {}
       try {
         await query('ALTER TABLE documents ADD COLUMN file_data LONGBLOB DEFAULT NULL');
+      } catch (_) {}
+      try {
+        await query('ALTER TABLE clearance_status MODIFY COLUMN officer_signature_snapshot LONGTEXT DEFAULT NULL');
       } catch (_) {}
       try {
         await query("ALTER TABLE notifications MODIFY COLUMN channel VARCHAR(50) NOT NULL DEFAULT 'in_app'");

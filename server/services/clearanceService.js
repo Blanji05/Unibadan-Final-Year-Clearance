@@ -500,13 +500,32 @@ async function reviewStage(officerId, studentId, stageId, decision, remarks) {
     const crypto = require('crypto');
     const slipRef = `UI-SLIP-${stageId}-${studentId}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
 
-    await query(
-      `UPDATE clearance_status
-          SET status = ?, officer_id = ?, remarks = ?, reviewed_at = NOW(),
-              officer_name_snapshot = ?, officer_signature_snapshot = ?, slip_reference = ?
-        WHERE id = ?`,
-      [decision, officerId, remarks, officer.full_name, officer.signature_url, slipRef, status.id]
-    );
+    try {
+      await query(
+        `UPDATE clearance_status
+            SET status = ?, officer_id = ?, remarks = ?, reviewed_at = NOW(),
+                officer_name_snapshot = ?, officer_signature_snapshot = ?, slip_reference = ?
+          WHERE id = ?`,
+        [decision, officerId, remarks, officer.full_name, officer.signature_url, slipRef, status.id]
+      );
+    } catch (updateErr) {
+      if (updateErr.message?.includes('officer_signature_snapshot')) {
+        try {
+          await query('ALTER TABLE clearance_status MODIFY COLUMN officer_signature_snapshot LONGTEXT DEFAULT NULL');
+          await query(
+            `UPDATE clearance_status
+                SET status = ?, officer_id = ?, remarks = ?, reviewed_at = NOW(),
+                    officer_name_snapshot = ?, officer_signature_snapshot = ?, slip_reference = ?
+              WHERE id = ?`,
+            [decision, officerId, remarks, officer.full_name, officer.signature_url, slipRef, status.id]
+          );
+        } catch (retryErr) {
+          throw retryErr;
+        }
+      } else {
+        throw updateErr;
+      }
+    }
   } else {
     // Decision is 'rejected' or revocation of approval
     await query(
