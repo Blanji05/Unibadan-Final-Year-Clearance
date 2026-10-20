@@ -59,8 +59,10 @@ export const authApi = {
   forgotPassword: (email) => api.post('/auth/forgot-password', { email }).then((r) => r.data.data),
   resetPassword: (token, password) =>
     api.post('/auth/reset-password', { token, password }).then((r) => r.data.data),
-  changeInitialPassword: (password) =>
-    api.post('/auth/change-initial-password', { password }).then((r) => r.data.data),
+  changeInitialPassword: (password, token = null) => {
+    const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
+    return api.post('/auth/change-initial-password', { password }, config).then((r) => r.data.data);
+  },
 };
 
 // --- Student ---

@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './NotificationBell';
-import FirstLoginPasswordModal from './FirstLoginPasswordModal';
 import {
   IconAward,
   IconCard,
@@ -301,7 +300,6 @@ export default function Layout() {
         </header>
 
         <main className="main-content">
-          <FirstLoginPasswordModal />
           <Outlet />
         </main>
       </div>

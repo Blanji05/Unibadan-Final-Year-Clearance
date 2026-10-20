@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { IconEye, IconEyeOff } from '../../components/Icons';
+import FirstLoginPasswordModal from '../../components/FirstLoginPasswordModal';
 
 export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [pendingFirstLogin, setPendingFirstLogin] = useState(null);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -20,10 +23,16 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setLoading(true);
 
     try {
-      await login(email, password);
+      const res = await login(email, password);
+      if (res?.must_change_password) {
+        // First-time login: show popup without logging into the dashboard
+        setPendingFirstLogin({ user: res.user, token: res.token });
+        return;
+      }
       navigate('/');
     } catch (err) {
       setError(err.message);
@@ -32,11 +41,45 @@ export default function Login() {
     }
   };
 
+  const handleFirstLoginSuccess = () => {
+    // When password is changed, close popup and display the login form so the student signs in with new credentials
+    setPendingFirstLogin(null);
+    setPassword('');
+    setSuccessMessage('Your password has been changed successfully! Please sign in with your new password to continue.');
+  };
+
   return (
     <div className="auth-page">
+      {pendingFirstLogin && (
+        <FirstLoginPasswordModal
+          user={pendingFirstLogin.user}
+          token={pendingFirstLogin.token}
+          onSuccess={handleFirstLoginSuccess}
+          onClose={() => setPendingFirstLogin(null)}
+        />
+      )}
+
       <div className="auth-card">
         <h1>UI Student Clearance</h1>
         <p className="auth-subtitle">Sign in to continue</p>
+
+        {successMessage && (
+          <div
+            className="notice"
+            style={{
+              marginBottom: '1.25rem',
+              borderLeft: '4px solid #10b981',
+              backgroundColor: '#ecfdf5',
+              color: '#065f46',
+              padding: '0.75rem 1rem',
+              borderRadius: '4px',
+              fontSize: '0.88rem',
+              lineHeight: 1.4,
+            }}
+          >
+            ✓ {successMessage}
+          </div>
+        )}
 
         {error && <div className="error">{error}</div>}
 

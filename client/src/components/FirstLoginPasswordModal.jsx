@@ -3,8 +3,16 @@ import { useAuth } from '../context/AuthContext';
 import { authApi } from '../services/api';
 import { IconEye, IconEyeOff, IconLock } from './Icons';
 
-export default function FirstLoginPasswordModal() {
-  const { user, updateUser } = useAuth();
+export default function FirstLoginPasswordModal({
+  user: propUser,
+  token: propToken,
+  onSuccess,
+  onClose,
+}) {
+  const { user: authUser, updateUser } = useAuth();
+  const activeUser = propUser || authUser;
+  const token = propToken || null;
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -13,7 +21,12 @@ export default function FirstLoginPasswordModal() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  if (!user || user.role !== 'student' || !user.must_change_password) {
+  if (!activeUser || activeUser.role !== 'student') {
+    return null;
+  }
+
+  // If used inside auth context, verify must_change_password is true
+  if (!propUser && !activeUser.must_change_password) {
     return null;
   }
 
@@ -39,10 +52,14 @@ export default function FirstLoginPasswordModal() {
 
     try {
       setBusy(true);
-      const res = await authApi.changeInitialPassword(password);
+      const res = await authApi.changeInitialPassword(password, token);
       setSuccess(res.message || 'Password updated successfully! A confirmation email has been dispatched.');
       setTimeout(() => {
-        updateUser({ must_change_password: false });
+        if (onSuccess) {
+          onSuccess(res);
+        } else {
+          updateUser({ must_change_password: false });
+        }
       }, 1200);
     } catch (err) {
       setError(err.message || 'Failed to update password.');
@@ -95,7 +112,7 @@ export default function FirstLoginPasswordModal() {
             First-Time Login: Set Your Password
           </h2>
           <p style={{ margin: '0.4rem 0 0', fontSize: '0.88rem', color: '#64748b', lineHeight: 1.5 }}>
-            Welcome, <strong>{user.full_name}</strong>! As a security requirement for newly uploaded accounts, you must change your initial temporary password to a personal password.
+            Welcome, <strong>{activeUser.full_name}</strong>! As a security requirement for newly uploaded accounts, you must change your initial temporary password to a personal password.
           </p>
         </div>
 
@@ -111,7 +128,7 @@ export default function FirstLoginPasswordModal() {
           }}
         >
           📧 A confirmation notification will be sent to your institutional email:
-          <div style={{ fontWeight: '600', marginTop: '0.2rem' }}>{user.email}</div>
+          <div style={{ fontWeight: '600', marginTop: '0.2rem' }}>{activeUser.email}</div>
         </div>
 
         {error && <div className="error" style={{ marginBottom: '1rem' }}>{error}</div>}
@@ -192,9 +209,20 @@ export default function FirstLoginPasswordModal() {
           >
             {busy ? 'Saving & Sending Email…' : 'Save New Password & Continue'}
           </button>
+
+          {onClose && !success && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="btn btn-secondary"
+              style={{ width: '100%', marginTop: '0.6rem', padding: '0.55rem', fontSize: '0.9rem' }}
+              disabled={busy}
+            >
+              Cancel and Return to Sign In
+            </button>
+          )}
         </form>
       </div>
     </div>
   );
 }
-
