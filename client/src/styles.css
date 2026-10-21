@@ -3332,5 +3332,141 @@ html, body, #root, .app-layout {
   }
 }
 
+/* --- Verification Desk Responsive Styles --- */
+.verify-form {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  align-items: stretch;
+}
 
+.verify-input-wrap {
+  flex: 1 1 280px;
+  min-width: 0;
+  position: relative;
+}
 
+.verify-input {
+  width: 100%;
+  padding-left: 2.5rem;
+  font-size: 0.95rem;
+  height: 44px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  box-sizing: border-box;
+}
+
+.verify-submit-btn {
+  height: 44px;
+  padding: 0 1.25rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+}
+
+.verify-registry-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.verify-registry-search {
+  position: relative;
+  width: 260px;
+  max-width: 100%;
+}
+
+.verify-grid-meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  margin-bottom: 1.25rem;
+  border: 1px solid #e2e8f0;
+}
+
+.verify-grid-student {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.75rem;
+  background-color: #ffffff;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+}
+
+.verify-mobile-only {
+  display: none;
+}
+
+.verify-desktop-only {
+  display: block;
+}
+
+.verify-mobile-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.9rem;
+  margin-bottom: 0.75rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.verify-code-pill {
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  background: #f1f5f9;
+  padding: 3px 6px;
+  border-radius: 4px;
+  color: #0f172a;
+}
+
+@media (max-width: 768px) {
+  .verify-form {
+    flex-direction: column;
+  }
+
+  .verify-input-wrap {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+
+  .verify-submit-btn {
+    width: 100%;
+  }
+
+  .verify-registry-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .verify-registry-search {
+    width: 100%;
+  }
+
+  .verify-grid-meta {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .verify-grid-student {
+    grid-template-columns: 1fr;
+    gap: 0.65rem;
+  }
+
+  .verify-mobile-only {
+    display: block;
+  }
+
+  .verify-desktop-only {
+    display: none;
+  }
+}
