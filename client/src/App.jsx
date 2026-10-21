@@ -24,6 +24,8 @@ import ManageSections from './pages/admin/ManageSections.jsx';
 import ManageStudents from './pages/admin/ManageStudents.jsx';
 import ManageUsers from './pages/admin/ManageUsers.jsx';
 import Reports from './pages/admin/Reports.jsx';
+import VerifyCertificate from './pages/admin/VerifyCertificate.jsx';
+import VerifyPublic from './pages/public/VerifyPublic.jsx';
 
 /** Route guard: requires a session, and optionally a specific role. */
 function Protected({ roles, children }) {
@@ -58,6 +60,8 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
+      <Route path="/verify/:code" element={<VerifyPublic />} />
+      <Route path="/verify" element={<VerifyPublic />} />
 
       <Route element={<Layout />}>
         <Route path="/" element={<RoleHome />} />
@@ -214,6 +218,14 @@ export default function App() {
           element={
             <Protected roles={['admin']}>
               <ManageUsers />
+            </Protected>
+          }
+        />
+        <Route
+          path="/admin/verify"
+          element={
+            <Protected roles={['admin']}>
+              <VerifyCertificate />
             </Protected>
           }
         />

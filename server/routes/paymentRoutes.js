@@ -42,7 +42,15 @@ router.get(
   '/verify-certificate/:code',
   asyncHandler(async (req, res) => {
     const record = await certificateService.verifyCertificate(req.params.code);
-    return sendSuccess(res, { certificate: record, valid: true });
+    return sendSuccess(res, { ...record, certificate: record, valid: true });
+  })
+);
+
+router.get(
+  '/verify/:code',
+  asyncHandler(async (req, res) => {
+    const record = await certificateService.verifyCertificate(req.params.code);
+    return sendSuccess(res, { ...record, certificate: record, valid: true });
   })
 );
 

@@ -193,6 +193,9 @@ router.patch(
 );
 
 router.post('/generate-certificate/:studentId', controller.generateCertificate);
+router.get('/certificates', controller.getCertificates);
+router.get('/certificates/verify/:query', controller.verifyCertificateCode);
+router.get('/students/:studentId/certificate/download', controller.downloadStudentCertificate);
 
 // --- Reports, deadline and reminders ----------------------------------------
 router.post(

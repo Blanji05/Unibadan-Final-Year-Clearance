@@ -214,4 +214,15 @@ export const adminApi = {
   settings: () => api.get('/admin/settings').then((r) => r.data.data),
   setDeadline: (deadline) => api.put('/admin/settings/deadline', { deadline }).then((r) => r.data.data),
   sendReminders: () => api.post('/admin/send-reminders').then((r) => r.data.data),
+
+  // Certificates & Clearance Verification
+  certificates: (params) => api.get('/admin/certificates', { params }).then((r) => r.data.data),
+  verifyCertificate: (query) => api.get(`/admin/certificates/verify/${encodeURIComponent(query)}`).then((r) => r.data.data),
+  downloadStudentCertificate: (studentId) =>
+    api.get(`/admin/students/${studentId}/certificate/download`, { responseType: 'blob' }).then((r) => r.data),
+};
+
+// --- Public Certificate Verification ---
+export const certificateApi = {
+  verify: (code) => api.get(`/payment/verify-certificate/${encodeURIComponent(code)}`).then((r) => r.data.data),
 };

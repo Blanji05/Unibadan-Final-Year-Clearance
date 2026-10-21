@@ -110,17 +110,102 @@ async function getCertificate(studentId) {
   );
 }
 
-/** Public verification lookup by code. */
-async function verifyCertificate(code) {
+/** Verification lookup by verification code, certificate number, or matric number. */
+async function verifyCertificate(queryStr) {
+  const clean = String(queryStr || '').trim();
+  if (!clean) throw new ApiError('Please provide a verification code, certificate number, or matric number.', 400);
+
   const record = await queryOne(
-    `SELECT c.certificate_no, c.generated_at, u.full_name, u.matric_number, u.department, u.faculty
+    `SELECT c.id AS certificate_id, c.certificate_no, c.verification_code, c.certificate_url, c.generated_at,
+            u.id AS student_id, u.full_name, u.matric_number, u.department, u.faculty,
+            u.degree_program, u.hall, u.graduation_session, u.email, u.phone_number, u.passport_url
        FROM certificates c
        JOIN users u ON c.student_id = u.id
-      WHERE c.verification_code = ?`,
-    [code]
+      WHERE c.verification_code = ? OR c.certificate_no = ? OR u.matric_number = ?`,
+    [clean, clean, clean]
   );
-  if (!record) throw new ApiError('No clearance letter matches that verification code.', 404);
-  return record;
+  if (!record) throw new ApiError('No clearance letter matches that verification code or matric number.', 404);
+
+  // Fetch approved clearance stages breakdown
+  const stages = await query(
+    `SELECT cs.status, cs.reviewed_at, cs.remarks, s.stage_name, s.stage_order, s.code, u.full_name AS officer_name
+       FROM clearance_status cs
+       JOIN clearance_stages s ON cs.stage_id = s.id
+       LEFT JOIN users u ON cs.officer_id = u.id
+      WHERE cs.student_id = ? AND s.is_active = TRUE
+      ORDER BY s.stage_order`,
+    [record.student_id]
+  );
+
+  const approved = stages.filter((s) => s.status === 'approved');
+
+  return {
+    verified: true,
+    certificate_id: record.certificate_id,
+    certificate_no: record.certificate_no,
+    verification_code: record.verification_code,
+    certificate_url: record.certificate_url,
+    issued_at: record.generated_at,
+    student: {
+      id: record.student_id,
+      full_name: record.full_name,
+      matric_number: record.matric_number,
+      department: record.department,
+      faculty: record.faculty,
+      degree_program: record.degree_program,
+      hall: record.hall,
+      graduation_session: record.graduation_session,
+      email: record.email,
+      phone_number: record.phone_number,
+      passport_url: record.passport_url,
+    },
+    summary: {
+      total_stages: stages.length,
+      approved_stages: approved.length,
+      is_complete: stages.length > 0 && approved.length === stages.length,
+    },
+    stages,
+  };
+}
+
+/** List all issued clearance letters / certificates with pagination and search. */
+async function listCertificates({ search = '', limit = 50, offset = 0 } = {}) {
+  const cleanSearch = String(search || '').trim();
+  const searchPattern = `%${cleanSearch}%`;
+  const limitNum = Math.max(1, Math.min(100, parseInt(limit, 10) || 50));
+  const offsetNum = Math.max(0, parseInt(offset, 10) || 0);
+
+  let sql = `
+    SELECT c.id, c.certificate_no, c.verification_code, c.generated_at,
+           u.id AS student_id, u.full_name, u.matric_number, u.department, u.faculty
+      FROM certificates c
+      JOIN users u ON c.student_id = u.id
+  `;
+  const params = [];
+
+  if (cleanSearch) {
+    sql += ` WHERE u.matric_number LIKE ? OR u.full_name LIKE ? OR c.certificate_no LIKE ? OR c.verification_code LIKE ?`;
+    params.push(searchPattern, searchPattern, searchPattern, searchPattern);
+  }
+
+  sql += ` ORDER BY c.generated_at DESC LIMIT ${limitNum} OFFSET ${offsetNum}`;
+
+  const rows = await query(sql, params);
+
+  const countRow = await queryOne(
+    cleanSearch
+      ? `SELECT COUNT(*) AS total
+           FROM certificates c
+           JOIN users u ON c.student_id = u.id
+          WHERE u.matric_number LIKE ? OR u.full_name LIKE ? OR c.certificate_no LIKE ? OR c.verification_code LIKE ?`
+      : `SELECT COUNT(*) AS total FROM certificates`,
+    cleanSearch ? [searchPattern, searchPattern, searchPattern, searchPattern] : []
+  );
+
+  return {
+    items: rows,
+    total: countRow?.total || 0,
+  };
 }
 
 
@@ -164,4 +249,4 @@ async function getCertificatePDF(studentId) {
   };
 }
 
-module.exports = { getCompletionSummary, issueCertificate, getCertificate, verifyCertificate, getCertificatePDF };
+module.exports = { getCompletionSummary, issueCertificate, getCertificate, verifyCertificate, listCertificates, getCertificatePDF };

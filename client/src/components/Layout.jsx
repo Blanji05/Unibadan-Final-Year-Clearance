@@ -16,6 +16,7 @@ import {
   IconUpload,
   IconUser,
   IconUsers,
+  IconShieldCheck,
   IconX,
 } from './Icons';
 
@@ -81,6 +82,7 @@ const NAV = {
       heading: 'Records',
       items: [
         { to: '/admin/students', label: 'Students', icon: IconUsers },
+        { to: '/admin/verify', label: 'Verify Clearance', icon: IconShieldCheck },
         { to: '/admin/users', label: 'Staff Accounts', icon: IconUser },
         { to: '/officer/directory', label: 'Officer Directory', icon: IconUsers },
         { to: '/officer/students', label: 'Student Lookup', icon: IconSearch },

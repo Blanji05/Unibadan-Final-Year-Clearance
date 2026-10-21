@@ -353,6 +353,34 @@ const getActivity = asyncHandler(async (req, res) => {
   return sendSuccess(res, { activity });
 });
 
+/** GET /api/admin/certificates — list all issued certificates */
+const getCertificates = asyncHandler(async (req, res) => {
+  const result = await certificateService.listCertificates({
+    search: req.query.search,
+    limit: req.query.limit,
+    offset: req.query.offset,
+  });
+  return sendSuccess(res, result);
+});
+
+/** GET /api/admin/certificates/verify/:query — verify certificate by code, cert no, or matric no */
+const verifyCertificateCode = asyncHandler(async (req, res) => {
+  const result = await certificateService.verifyCertificate(req.params.query);
+  return sendSuccess(res, result);
+});
+
+/** GET /api/admin/students/:studentId/certificate/download — download student certificate PDF */
+const downloadStudentCertificate = asyncHandler(async (req, res) => {
+  const { pdfBuffer, fileName } = await certificateService.getCertificatePDF(Number(req.params.studentId));
+  res.set({
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Content-Length': pdfBuffer.length,
+    'Cache-Control': 'no-store, no-cache, must-revalidate',
+  });
+  return res.end(pdfBuffer);
+});
+
 module.exports = {
   getStudents,
   getUsers,
@@ -378,4 +406,7 @@ module.exports = {
   resetPassword,
   setOfficerSection,
   getActivity,
+  getCertificates,
+  verifyCertificateCode,
+  downloadStudentCertificate,
 };
