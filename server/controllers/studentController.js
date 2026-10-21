@@ -151,6 +151,19 @@ const getCertificate = asyncHandler(async (req, res) => {
   return sendSuccess(res, { certificate, eligible: true });
 });
 
+
+/** GET /api/student/certificate/download (PDF download) */
+const downloadCertificate = asyncHandler(async (req, res) => {
+  const { pdfBuffer, fileName } = await certificateService.getCertificatePDF(req.user.id);
+
+  res.set({
+    'Content-Type': 'application/pdf',
+    'Content-Disposition': `attachment; filename="${fileName}"`,
+    'Content-Length': pdfBuffer.length,
+  });
+  return res.send(pdfBuffer);
+});
+
 /** GET /api/student/payments/:paymentId/receipt  (PDF download) */
 const getReceipt = asyncHandler(async (req, res) => {
   const { student, payment } = await paymentService.getReceipt(req.user.id, Number(req.params.paymentId));
@@ -365,6 +378,7 @@ module.exports = {
   getReceipt,
   getTimeline,
   getCertificate,
+  downloadCertificate,
   getProfile,
   updateProfile,
   uploadPassport,

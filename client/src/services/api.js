@@ -94,6 +94,8 @@ export const studentApi = {
     api.get(`/student/payments/${paymentId}/receipt`, { responseType: 'blob' }).then((r) => r.data),
   timeline: () => api.get('/student/timeline').then((r) => r.data.data),
   certificate: () => api.get('/student/certificate').then((r) => r.data.data),
+  downloadCertificate: () =>
+    api.get('/student/certificate/download', { responseType: 'blob' }).then((r) => r.data),
   profile: () => api.get('/student/profile').then((r) => r.data.data),
   updateProfile: (payload) => api.put('/student/profile', payload).then((r) => r.data.data),
   uploadPassport: (formData) => api.post('/student/profile/passport', formData).then((r) => r.data.data),

@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { studentApi } from '../../services/api';
+import { saveBlob } from '../../services/download';
 import { realtime } from '../../services/realtime';
 
 export default function Certificate() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
@@ -23,6 +25,20 @@ export default function Certificate() {
     const unsubClear = realtime.on('clearance:update', () => load());
     return () => unsubClear();
   }, [load]);
+
+  const handleDownload = async () => {
+    try {
+      setDownloading(true);
+      setError('');
+      const blob = await studentApi.downloadCertificate();
+      const filename = `Clearance-Letter-${certificate?.certificate_no || 'UI'}.pdf`;
+      saveBlob(blob, filename);
+    } catch (err) {
+      setError(err.message || 'Failed to download clearance letter');
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (loading) return <div className="page-loading">Checking clearance letter…</div>;
 
@@ -49,15 +65,26 @@ export default function Certificate() {
               </>
             )}
           </p>
-          <a
-            className="btn btn-primary"
-            style={{ display: 'inline-block', width: 'auto' }}
-            href={certificate.certificate_url}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Download Clearance Letter (PDF)
-          </a>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                width: 'auto',
+                minWidth: '260px',
+                padding: '0.65rem 1.5rem',
+                fontSize: '0.95rem'
+              }}
+              onClick={handleDownload}
+              disabled={downloading}
+            >
+              {downloading ? 'Preparing Clearance Letter…' : 'Download Clearance Letter (PDF)'}
+            </button>
+          </div>
         </div>
       ) : (
         <div className="card">

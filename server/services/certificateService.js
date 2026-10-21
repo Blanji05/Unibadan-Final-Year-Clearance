@@ -123,4 +123,45 @@ async function verifyCertificate(code) {
   return record;
 }
 
-module.exports = { getCompletionSummary, issueCertificate, getCertificate, verifyCertificate };
+
+/** Generate or retrieve the clearance letter PDF buffer for download. */
+async function getCertificatePDF(studentId) {
+  const student = await queryOne(
+    `SELECT id, full_name, matric_number, department, faculty, email, phone_number,
+            passport_url, degree_program, hall, graduation_session
+       FROM users WHERE id = ?`,
+    [studentId]
+  );
+  if (!student) throw new ApiError('Student not found.', 404);
+
+  const summary = await getCompletionSummary(studentId);
+  if (!summary.isComplete) {
+    throw new ApiError(
+      `Clearance letter unavailable: ${summary.approvedCount} of ${summary.total} stages approved.`,
+      403
+    );
+  }
+
+  let cert = await queryOne(
+    'SELECT certificate_no, verification_code FROM certificates WHERE student_id = ?',
+    [studentId]
+  );
+
+  if (!cert) {
+    cert = await issueCertificate(studentId, studentId);
+  }
+
+  const { pdfBuffer } = await generateCertificatePDF({
+    student,
+    stages: summary.approvedStages,
+    certificateNo: cert.certificate_no,
+    verificationCode: cert.verification_code,
+  });
+
+  return {
+    pdfBuffer,
+    fileName: `Clearance-Letter-${cert.certificate_no}.pdf`,
+  };
+}
+
+module.exports = { getCompletionSummary, issueCertificate, getCertificate, verifyCertificate, getCertificatePDF };

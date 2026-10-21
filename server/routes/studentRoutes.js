@@ -40,6 +40,7 @@ router.get('/payments/:paymentId/receipt', [param('paymentId').isInt({ min: 1 })
 router.get('/timeline', controller.getTimeline);
 
 router.get('/certificate', controller.getCertificate);
+router.get('/certificate/download', controller.downloadCertificate);
 
 // Profile management
 router.get('/profile', controller.getProfile);

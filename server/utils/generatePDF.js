@@ -13,13 +13,14 @@ const OUTPUT_DIR = path.join(__dirname, '..', 'generated');
  *
  * @returns {Promise<{filePath: string, url: string}>}
  */
-async function generateCertificatePDF({ student, stages, certificateNo, verificationCode }) {
+async function generateCertificatePDF({ student = {}, stages, approvedStages, certificateNo = 'UI-CLR', verificationCode = '' }) {
+  const stageList = Array.isArray(stages) ? stages : (Array.isArray(approvedStages) ? approvedStages : []);
   await fsp.mkdir(OUTPUT_DIR, { recursive: true });
 
   const fileName = `${certificateNo}.pdf`;
   const filePath = path.join(OUTPUT_DIR, fileName);
 
-  const doc = new PDFDocument({ size: 'A4', margin: 50 });
+  const doc = new PDFDocument({ size: 'A4', margin: 40 });
   const chunks = [];
   doc.on('data', (chunk) => chunks.push(chunk));
 
@@ -28,106 +29,156 @@ async function generateCertificatePDF({ student, stages, certificateNo, verifica
     doc.on('error', reject);
   });
 
-  // --- Header ---
-  doc.fontSize(20).font('Helvetica-Bold').text('UNIVERSITY OF IBADAN', { align: 'center' });
-  doc.moveDown(0.2);
-  doc.fontSize(12).font('Helvetica').text('Ibadan, Oyo State, Nigeria', { align: 'center' });
-  doc.moveDown(0.8);
-  doc.fontSize(16).font('Helvetica-Bold').text('STUDENT CLEARANCE LETTER', { align: 'center' });
+  const pageWidth = 595.28;
+  const contentWidth = pageWidth - 80;
+  const headerY = 30;
 
-  doc.moveDown(0.5);
-  doc.moveTo(50, doc.y).lineTo(545, doc.y).stroke();
-  doc.moveDown(1);
+  // Draw UI Crest Logo
+  const logoPath = path.join(__dirname, '../assets/ui-logo.jpeg');
+  let logoDrawn = false;
+  if (fs.existsSync(logoPath)) {
+    try {
+      doc.image(logoPath, 40, headerY + 2, { width: 62, height: 62 });
+      logoDrawn = true;
+    } catch (_) {
+      logoDrawn = false;
+    }
+  }
 
-  // --- Student details ---
-  doc.fontSize(11).font('Helvetica');
-  const detail = (label, value) => {
-    doc.font('Helvetica-Bold').text(`${label}: `, { continued: true });
-    doc.font('Helvetica').text(value || '-');
+  const textStartX = logoDrawn ? 114 : 40;
+  const headerTextWidth = logoDrawn ? contentWidth - 74 : contentWidth;
+
+  doc.fillColor('#002147').fontSize(16).font('Helvetica-Bold').text('UNIVERSITY OF IBADAN', textStartX, headerY + 4, { width: headerTextWidth });
+  doc.fontSize(8.5).font('Helvetica').fillColor('#475569').text('IBADAN, OYO STATE, NIGERIA • STUDENT CLEARANCE MANAGEMENT SYSTEM', textStartX, headerY + 24, { width: headerTextWidth });
+  doc.fontSize(11).font('Helvetica-Bold').fillColor('#002147').text('FINAL ACADEMIC & INSTITUTIONAL CLEARANCE LETTER', textStartX, headerY + 38, { width: headerTextWidth });
+  doc.fontSize(8.5).font('Helvetica-Bold').fillColor('#475569').text(`GRADUATING CLASS OF ${student.graduation_session || '2025/2026'}`, textStartX, headerY + 54, { width: headerTextWidth });
+
+  // Blue divider bar
+  doc.rect(40, headerY + 70, contentWidth, 1.5).fill('#002147');
+
+  // Certificate Reference bar
+  let curY = headerY + 76;
+  doc.rect(40, curY, contentWidth, 20).fillAndStroke('#F8FAFC', '#CBD5E1');
+  doc.fillColor('#002147').fontSize(8.5).font('Helvetica-Bold').text(`CERTIFICATE NO: ${certificateNo}`, 48, curY + 5);
+  doc.fontSize(8.5).font('Helvetica').fillColor('#475569').text(`DATE ISSUED: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })}`, pageWidth - 215, curY + 5, { width: 165, align: 'right' });
+
+  // Student details box
+  curY += 26;
+  const profileBoxHeight = 110;
+  doc.rect(40, curY, contentWidth, profileBoxHeight).lineWidth(1).strokeColor('#CBD5E1').fillAndStroke('#FFFFFF', '#CBD5E1');
+  doc.rect(40, curY, contentWidth, 18).fill('#002147');
+  doc.fillColor('#FFFFFF').fontSize(8.5).font('Helvetica-Bold').text('STUDENT IDENTIFICATION & ACADEMIC CREDENTIALS', 48, curY + 4);
+
+  // Passport Frame
+  const passportWidth = 75;
+  const passportHeight = 88;
+  const passportX = pageWidth - 40 - passportWidth - 10;
+  const passportY = curY + 20;
+
+  const passportBuf = await resolveImageBuffer(student.passport_url);
+  if (passportBuf) {
+    try {
+      doc.image(passportBuf, passportX, passportY, { width: passportWidth, height: passportHeight });
+      doc.rect(passportX, passportY, passportWidth, passportHeight).lineWidth(1).strokeColor('#94A3B8').stroke();
+    } catch (_) {
+      drawPassportPlaceholder(doc, passportX, passportY, passportWidth, passportHeight);
+    }
+  } else {
+    drawPassportPlaceholder(doc, passportX, passportY, passportWidth, passportHeight);
+  }
+
+  // Left Column Details
+  const colX = 50;
+  let lineY = curY + 24;
+  const step = 14;
+
+  const printField = (lbl, val, bold = false) => {
+    doc.fillColor('#475569').fontSize(8).font('Helvetica-Bold').text(`${lbl}:`, colX, lineY, { width: 125 });
+    doc.fillColor('#0F172A').fontSize(8).font(bold ? 'Helvetica-Bold' : 'Helvetica').text(String(val || '—'), colX + 130, lineY, { width: 230 });
+    lineY += step;
   };
 
-  detail('Clearance Letter No', certificateNo);
-  detail('Name', student.full_name);
-  detail('Matriculation Number', student.matric_number);
-  detail('Department', student.department);
-  detail('Faculty', student.faculty);
-  detail('Date Issued', new Date().toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  }));
+  printField('FULL NAME', student.full_name?.toUpperCase(), true);
+  printField('MATRICULATION NUMBER', student.matric_number, true);
+  printField('FACULTY', student.faculty);
+  printField('DEPARTMENT', student.department);
+  printField('DEGREE PROGRAM', student.degree_program || 'Bachelor of Science (B.Sc)');
+  printField('HALL OF RESIDENCE', student.hall);
 
-  doc.moveDown(1);
-  doc.fontSize(11).font('Helvetica').text(
-    `This is to certify that the above-named student has satisfactorily completed all ` +
-    `${stages.length} required clearance stages of the University of Ibadan and is hereby ` +
-    `cleared to collect their final academic clearance letter.`,
-    { align: 'justify' }
+  // Certification paragraph
+  curY += profileBoxHeight + 8;
+  doc.rect(40, curY, contentWidth, 38).fillAndStroke('#EFF6FF', '#BFDBFE');
+  doc.fillColor('#1E3A8A').fontSize(8.5).font('Helvetica-Bold').text(
+    'OFFICIAL CERTIFICATION', 48, curY + 4
+  );
+  doc.fillColor('#1E293B').fontSize(7.5).font('Helvetica').text(
+    `This is to officially certify that the student named above has fulfilled all statutory clearance obligations and satisfactorily completed all ${stageList.length} designated clearance stages of the University of Ibadan. The student has returned all university property, cleared all institutional liabilities, and is fully cleared by all academic and administrative divisions.`,
+    48, curY + 15, { width: contentWidth - 16, align: 'justify', lineGap: 1.5 }
   );
 
-  doc.moveDown(1);
+  // Clearance Stages Table
+  curY += 44;
+  doc.rect(40, curY, contentWidth, 18).fill('#002147');
+  doc.fillColor('#FFFFFF').fontSize(8).font('Helvetica-Bold').text('ENDORSED CLEARANCE STAGES BREAKDOWN', 48, curY + 5);
 
-  // --- Stage table ---
-  doc.fontSize(12).font('Helvetica-Bold').text('Clearance Stages Completed');
-  doc.moveDown(0.5);
+  curY += 18;
+  const tableTop = curY;
+  doc.rect(40, tableTop, contentWidth, 16).fill('#F1F5F9');
+  doc.fillColor('#475569').fontSize(7.5).font('Helvetica-Bold');
+  doc.text('#', 48, tableTop + 4);
+  doc.text('CLEARANCE STAGE / SECTION', 70, tableTop + 4);
+  doc.text('ENDORSED BY / OFFICER', 300, tableTop + 4);
+  doc.text('DATE APPROVED', 430, tableTop + 4);
 
-  const tableTop = doc.y;
-  const col = { num: 55, stage: 90, date: 380, officer: 460 };
-
-  doc.fontSize(9).font('Helvetica-Bold');
-  doc.text('#', col.num, tableTop);
-  doc.text('Stage', col.stage, tableTop);
-  doc.text('Approved', col.date, tableTop);
-  doc.text('Officer', col.officer, tableTop);
-
-  doc.moveTo(50, tableTop + 13).lineTo(545, tableTop + 13).stroke();
-
-  let y = tableTop + 20;
-  doc.font('Helvetica').fontSize(9);
-
-  stages.forEach((stage, index) => {
-    if (y > 720) {
-      doc.addPage();
-      y = 60;
-    }
-    const approvedOn = stage.reviewed_at
-      ? new Date(stage.reviewed_at).toLocaleDateString('en-GB')
-      : '-';
-
-    doc.text(String(index + 1), col.num, y);
-    doc.text(stage.stage_name, col.stage, y, { width: 280 });
-    doc.text(approvedOn, col.date, y);
-    doc.text(stage.officer_name || 'System', col.officer, y, { width: 90 });
-    y += 18;
+  curY += 16;
+  stageList.forEach((stage, idx) => {
+    const rowBg = idx % 2 === 0 ? '#FFFFFF' : '#F8FAFC';
+    doc.rect(40, curY, contentWidth, 15).fill(rowBg);
+    doc.fillColor('#334155').fontSize(7.5).font('Helvetica');
+    doc.text(String(idx + 1), 48, curY + 3);
+    doc.font('Helvetica-Bold').text(stage.stage_name, 70, curY + 3, { width: 225 });
+    doc.font('Helvetica').text(stage.officer_name || 'Authorized Clearance Officer', 300, curY + 3, { width: 125 });
+    const approvedDate = stage.reviewed_at ? new Date(stage.reviewed_at).toLocaleDateString('en-GB') : 'Verified';
+    doc.text(approvedDate, 430, curY + 3, { width: 110 });
+    curY += 15;
   });
 
-  // --- Footer / verification ---
-  doc.moveTo(50, y + 6).lineTo(545, y + 6).stroke();
-  doc.moveDown(2);
-  doc.y = y + 30;
+  // Security Seal & Verification Footer
+  curY += 8;
+  const sealBoxY = curY;
+  const sealBoxHeight = 52;
+  doc.rect(40, sealBoxY, contentWidth, sealBoxHeight).lineWidth(1).strokeColor('#CBD5E1').fillAndStroke('#F8FAFC', '#CBD5E1');
 
-  doc.fontSize(9).font('Helvetica-Oblique').text(
-    `Verification code: ${verificationCode}`,
-    50,
-    doc.y
+  doc.fillColor('#002147').fontSize(8).font('Helvetica-Bold').text('ELECTRONIC AUTHENTICATION & VERIFICATION', 48, sealBoxY + 5);
+  doc.fillColor('#475569').fontSize(7).font('Helvetica').text(
+    `Security Verification Code: ${verificationCode}\nThis document is authenticated electronically by the University of Ibadan Central Clearance Portal.\nVerify authenticity online at: https://unibadan-final-year-clearance.vercel.app/verify/${verificationCode}`,
+    48, sealBoxY + 16, { width: contentWidth - 140, lineGap: 1.5 }
   );
-  doc.text(
-    'This clearance letter was generated electronically by the UI Student Clearance Management System ' +
-    'and is valid without a physical signature.',
-    { width: 495, align: 'left' }
+
+  const stampX = pageWidth - 40 - 110;
+  doc.rect(stampX, sealBoxY + 5, 102, 42).lineWidth(1.2).strokeColor('#002147').fill('#FFFFFF');
+  doc.fillColor('#002147').fontSize(7.5).font('Helvetica-Bold').text('★ UI VERIFIED ★', stampX, sealBoxY + 10, { width: 102, align: 'center' });
+  doc.fillColor('#00804D').fontSize(6.5).font('Helvetica-Bold').text('CLEARANCE COMPLETE', stampX, sealBoxY + 20, { width: 102, align: 'center' });
+  doc.fillColor('#475569').fontSize(6).font('Helvetica').text(`REF: ${certificateNo.slice(-12)}`, stampX, sealBoxY + 30, { width: 102, align: 'center' });
+
+  doc.fillColor('#94A3B8').fontSize(6.5).font('Helvetica').text(
+    'University of Ibadan • Official Final Year Clearance Letter • Tamper-Evident Digital Document • Page 1 of 1',
+    40, 800, { width: contentWidth, align: 'center' }
   );
 
   doc.end();
   await finished;
 
-  await fsp.writeFile(filePath, Buffer.concat(chunks));
+  const pdfBuffer = Buffer.concat(chunks);
+  try {
+    await fsp.writeFile(filePath, pdfBuffer);
+  } catch (_) {}
 
-  return { filePath, url: `/generated/${fileName}` };
+  return { filePath, url: `/generated/${fileName}`, pdfBuffer };
 }
 
 /**
- * Render a payment receipt. Returned as a Buffer rather than written to disk -
- * receipts are cheap to rebuild and only ever downloaded by their owner.
- *
- * @returns {Promise<Buffer>}
+ * Render a payment receipt.
  */
 async function generateReceiptPDF({ student, payment }) {
   const doc = new PDFDocument({ size: 'A5', margin: 40 });
